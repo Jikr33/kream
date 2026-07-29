@@ -50,11 +50,7 @@ export default function OrdersScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <View style={styles.headerLeft} />
         <Text style={styles.headerTitle}>My Orders</Text>
         <View style={styles.headerRight} />
       </View>
@@ -118,17 +114,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  backButton: {
+  headerLeft: {
     width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  backIcon: {
-    fontSize: 32,
-    fontWeight: "300",
-    color: Colors.light.text,
-    marginTop: 2,
   },
   headerTitle: {
     fontSize: Typography.sectionTitle.fontSize,

@@ -12,11 +12,7 @@ export default function CartScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <View style={styles.headerLeft} />
         <Text style={styles.headerTitle}>Your Cart</Text>
         <View style={styles.headerRight} />
       </View>
@@ -25,7 +21,7 @@ export default function CartScreen() {
         <Text style={styles.emptyText}>Your cart is empty</Text>
         <TouchableOpacity
           style={styles.shopButton}
-          onPress={() => router.replace("/(tabs)/explore")}>
+          onPress={() => router.push("/(tabs)/explore")}>
           <Text style={styles.shopButtonText}>Continue Shopping</Text>
         </TouchableOpacity>
       </View>
@@ -49,17 +45,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  backButton: {
+  headerLeft: {
     width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  backIcon: {
-    fontSize: 32,
-    fontWeight: "300",
-    color: Colors.light.text,
-    marginTop: 2,
+  headerRight: {
+    width: 40,
   },
   headerTitle: {
     fontSize: Typography.sectionTitle.fontSize,
@@ -67,9 +57,6 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     flex: 1,
     textAlign: "center",
-  },
-  headerRight: {
-    width: 40,
   },
   emptyContainer: {
     flex: 1,
