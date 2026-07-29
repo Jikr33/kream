@@ -17,7 +17,7 @@ export default function ProfileScreen() {
   const user = { email: "user@example.com" };
 
   const menuItems = [
-    { title: "My Orders", subtitle: "Track your orders" },
+    { title: "My Orders", subtitle: "Track your orders", onPress: () => router.push("/orders") },
     {
       title: "Payment Methods",
       subtitle: "Manage payment options",
@@ -33,7 +33,7 @@ export default function ProfileScreen() {
       {
         text: "Log Out",
         style: "destructive",
-        onPress: () => router.replace("/"),
+        onPress: () => router.push("/(tabs)"),
       },
     ]);
   };
@@ -76,7 +76,10 @@ export default function ProfileScreen() {
         {/* Menu Items */}
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
-            <TouchableOpacity key={index} style={styles.menuItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.menuItem}
+              onPress={item.onPress}>
               <View style={styles.menuContent}>
                 <Text style={styles.menuTitle}>{item.title}</Text>
                 <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
