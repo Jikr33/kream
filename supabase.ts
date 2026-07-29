@@ -2,8 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { __DEV__ } from "react-native";
 import type { Database } from "@/types";
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
 const isConfigured = SUPABASE_URL && SUPABASE_ANON_KEY;
 
