@@ -14,11 +14,11 @@ type PremiumSelectorSectionProps = {
 };
 
 const categoryIcons: Record<string, { uri: string }> = {
-  running: { uri: "https://cdn.simpleicons.org/nike" },
-  basketball: { uri: "https://cdn.simpleicons.org/jordan" },
-  lifestyle: { uri: "https://cdn.simpleicons.org/vans" },
-  training: { uri: "https://cdn.simpleicons.org/reebok" },
-  luxury: { uri: "https://cdn.simpleicons.org/gucci" },
+  running: { uri: "https://cdn.simpleicons.org/running/111111" },
+  basketball: { uri: "https://cdn.simpleicons.org/basketball/111111" },
+  lifestyle: { uri: "https://cdn.simpleicons.org/shoe/111111" },
+  training: { uri: "https://cdn.simpleicons.org/dumbbell/111111" },
+  luxury: { uri: "https://cdn.simpleicons.org/diamond/111111" },
 };
 
 export default function PremiumSelectorSection({
