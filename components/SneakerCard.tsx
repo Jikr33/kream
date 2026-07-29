@@ -74,7 +74,7 @@ export default function SneakerCard({
         <Text style={styles.name} numberOfLines={2}>
           {sneaker.name}
         </Text>
-        <Text style={styles.brand}>{brandName || "Brand"}</Text>
+        <Text style={styles.brand}>{brandName || ""}</Text>
         <Text style={styles.price}>
           {(sneaker.price || 0).toLocaleString("mn-MN")}₮
         </Text>
@@ -83,15 +83,15 @@ export default function SneakerCard({
   );
 }
 
-const CARD_CORNER_RADIUS = 22;
-const IMAGE_HEIGHT = 160;
-const IMAGE_HEIGHT_COMPACT = 135;
+const CARD_CORNER_RADIUS = 16;
+const IMAGE_HEIGHT = 140;
+const IMAGE_HEIGHT_COMPACT = 120;
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.light.card,
     borderRadius: CARD_CORNER_RADIUS,
-    backgroundColor: "transparent",
     overflow: "hidden",
   },
   cardCompact: {
@@ -101,8 +101,7 @@ const styles = StyleSheet.create({
     position: "relative",
     width: "100%",
     height: IMAGE_HEIGHT,
-    overflow: "hidden",
-    backgroundColor: "transparent",
+    backgroundColor: Colors.light.backgroundSecondary,
   },
   imageContainerCompact: {
     height: IMAGE_HEIGHT_COMPACT,
@@ -115,70 +114,51 @@ const styles = StyleSheet.create({
   placeholderImage: {
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: Colors.light.backgroundSecondary,
   },
   placeholderText: {
     color: Colors.light.textTertiary,
-    fontSize: Typography.body.fontSize,
-    fontWeight: Typography.caption.fontWeight,
+    fontSize: Typography.caption.fontSize,
   },
   favoriteButton: {
     position: "absolute",
     top: Spacing.sm,
     right: Spacing.sm,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(255,255,255,0.9)",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.35)",
   },
   infoPlate: {
-    alignSelf: "center",
-    width: "100%",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.88)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.35)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 1,
+    padding: Spacing.sm + 2,
+    paddingTop: Spacing.sm,
   },
   name: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.light.text,
-    lineHeight: 18,
-    letterSpacing: 0.1,
-    marginBottom: 1,
-    textAlign: "center",
+    lineHeight: 17,
+    marginBottom: 2,
+    textAlign: "left",
   },
   brand: {
     fontSize: 10,
     fontWeight: "500",
-    color: Colors.light.textSecondary,
-    lineHeight: 14,
-    letterSpacing: 0.8,
-    marginBottom: 1,
-    textAlign: "center",
-    textTransform: "uppercase",
+    color: Colors.light.textTertiary,
+    marginBottom: 4,
+    textAlign: "left",
   },
   price: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#111111",
-    lineHeight: 20,
-    letterSpacing: 0.2,
-    textAlign: "center",
+    color: Colors.light.text,
+    textAlign: "left",
   },
 });
