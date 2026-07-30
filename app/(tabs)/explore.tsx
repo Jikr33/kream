@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.sm,
     backgroundColor: Colors.light.background,
   },
   headerTitle: {
@@ -168,21 +168,21 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   searchBar: {
-    height: SEARCH_BAR_HEIGHT,
+    height: 46,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.light.card,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.md,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.light.border,
+    borderColor: "#ECECEC",
   },
   searchInput: {
     flex: 1,
-    fontSize: Typography.search.fontSize,
-    color: Colors.light.text,
+    fontSize: 15,
+    color: "#111111",
     padding: 0,
-    marginLeft: Spacing.xs,
+    marginLeft: 10,
   },
   scrollView: {
     flex: 1,
