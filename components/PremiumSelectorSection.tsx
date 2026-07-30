@@ -121,29 +121,31 @@ export default function PremiumSelectorSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: Spacing.section,
+    paddingTop: 8,
+    marginBottom: 32,
   },
   brandSection: {
-    marginBottom: Spacing.section,
+    paddingTop: 8,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: Typography.sectionTitle.fontSize,
-    fontWeight: Typography.sectionTitle.fontWeight,
-    lineHeight: Typography.sectionTitle.lineHeight,
-    letterSpacing: Typography.sectionTitle.letterSpacing,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111111",
+    letterSpacing: 0.2,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   listContent: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 16,
     alignItems: "center",
   },
   brandListContent: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 16,
     alignItems: "center",
   },
   categoryListContent: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 16,
     alignItems: "center",
     flexWrap: "wrap",
   },

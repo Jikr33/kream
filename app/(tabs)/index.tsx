@@ -180,17 +180,16 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingVertical: 12,
     backgroundColor: Colors.light.background,
   },
   searchBar: {
-    height: 46,
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#ECECEC",
   },
@@ -210,10 +209,10 @@ const styles = StyleSheet.create({
   // Trending Section - Hero
   trendingSection: {
     paddingTop: 24,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   trendingTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     color: "#111111",
     letterSpacing: 0.2,
@@ -225,19 +224,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   trendingItem: {
-    width: 155,
+    width: 152,
   },
   // Section
   section: {
     paddingTop: 8,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#111111",
     letterSpacing: 0.2,
-    marginBottom: 12,
+    marginBottom: 16,
     paddingHorizontal: 16,
   },
   grid: {

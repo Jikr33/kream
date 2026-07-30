@@ -153,9 +153,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,0,0,0.08)",
   },
   info: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     paddingTop: 8,
-    paddingBottom: 10,
+    paddingBottom: 4,
   },
   brand: {
     fontSize: 11,
