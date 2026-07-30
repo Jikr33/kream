@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, memo } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import type { SneakerCardProps } from "@/types";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 import { IconSymbol } from "./ui/icon-symbol";
 
-export default function SneakerCard({
+const SneakerCard = memo(function SneakerCard({
   sneaker,
   brandName,
   onPress,
@@ -21,29 +21,29 @@ export default function SneakerCard({
   const imageUri = sneaker.image_url || sneaker.thumb || undefined;
   const isLiked = false;
 
-  const animatePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, {
-        toValue: 0.98,
-        duration: 90,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 90,
-        useNativeDriver: true,
-      }),
-    ]).start();
+  const handlePressIn = () => {
+    Animated.timing(scale, {
+      toValue: 0.98,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scale, {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
     <TouchableOpacity
       style={[styles.card, compact && styles.cardCompact]}
-      onPress={() => {
-        animatePress();
-        onPress();
-      }}
-      activeOpacity={0.95}>
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}>
       <Animated.View
         style={[
           styles.imageContainer,
@@ -51,9 +51,13 @@ export default function SneakerCard({
           { transform: [{ scale }] },
         ]}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} />
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.image}
+            resizeMode="contain"
+          />
         ) : (
-          <View style={[styles.image, styles.placeholderImage]}>
+          <View style={styles.placeholderContainer}>
             <Text style={styles.placeholderText}>No Image</Text>
           </View>
         )}
@@ -64,33 +68,37 @@ export default function SneakerCard({
           onPress={() => {}}>
           <IconSymbol
             name={isLiked ? "heart.fill" : "heart"}
-            size={20}
-            color={isLiked ? "#111111" : "#6B7280"}
+            size={18}
+            color={isLiked ? "#111111" : "#9CA3AF"}
           />
         </TouchableOpacity>
       </Animated.View>
 
-      <View style={styles.infoPlate}>
+      <View style={styles.infoContainer}>
+        <Text style={styles.brand} numberOfLines={1}>
+          {brandName || ""}
+        </Text>
         <Text style={styles.name} numberOfLines={2}>
           {sneaker.name}
         </Text>
-        <Text style={styles.brand}>{brandName || ""}</Text>
         <Text style={styles.price}>
           {(sneaker.price || 0).toLocaleString("mn-MN")}₮
         </Text>
       </View>
     </TouchableOpacity>
   );
-}
+});
 
-const CARD_CORNER_RADIUS = 16;
-const IMAGE_HEIGHT = 140;
-const IMAGE_HEIGHT_COMPACT = 120;
+export default SneakerCard;
+
+/** Card dimensions */
+const CARD_CORNER_RADIUS = 12;
+const IMAGE_HEIGHT = 130;
+const IMAGE_HEIGHT_COMPACT = 110;
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: Spacing.md,
-    backgroundColor: Colors.light.card,
+    backgroundColor: "transparent",
     borderRadius: CARD_CORNER_RADIUS,
     overflow: "hidden",
   },
@@ -101,7 +109,9 @@ const styles = StyleSheet.create({
     position: "relative",
     width: "100%",
     height: IMAGE_HEIGHT,
-    backgroundColor: Colors.light.backgroundSecondary,
+    backgroundColor: Colors.light.background,
+    justifyContent: "center",
+    alignItems: "center",
   },
   imageContainerCompact: {
     height: IMAGE_HEIGHT_COMPACT,
@@ -109,12 +119,11 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "contain",
   },
-  placeholderImage: {
+  placeholderContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.light.backgroundSecondary,
   },
   placeholderText: {
     color: Colors.light.textTertiary,
@@ -122,43 +131,46 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: "absolute",
-    top: Spacing.sm,
-    right: Spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    top: Spacing.xs,
+    right: Spacing.xs,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
   },
-  infoPlate: {
-    padding: Spacing.sm + 2,
+  infoContainer: {
     paddingTop: Spacing.sm,
-  },
-  name: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.light.text,
-    lineHeight: 17,
-    marginBottom: 2,
-    textAlign: "left",
+    paddingHorizontal: Spacing.xxs,
   },
   brand: {
-    fontSize: 10,
-    fontWeight: "500",
+    fontSize: Typography.brand.fontSize,
+    fontWeight: Typography.brand.fontWeight,
     color: Colors.light.textTertiary,
+    letterSpacing: Typography.brand.letterSpacing,
+    marginBottom: 2,
+  },
+  name: {
+    fontSize: Typography.productName.fontSize,
+    fontWeight: Typography.productName.fontWeight,
+    color: Colors.light.text,
+    lineHeight: Typography.productName.lineHeight,
+    letterSpacing: Typography.productName.letterSpacing,
     marginBottom: 4,
-    textAlign: "left",
   },
   price: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: Typography.price.fontSize,
+    fontWeight: Typography.price.fontWeight,
     color: Colors.light.text,
-    textAlign: "left",
+    lineHeight: Typography.price.lineHeight,
+    letterSpacing: Typography.price.letterSpacing,
   },
 });

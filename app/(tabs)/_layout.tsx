@@ -7,28 +7,29 @@ import { Colors, Typography, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function TabsLayout() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() ?? "light";
+  const colors = Colors[colorScheme];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tabIconSelected,
-        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].tabIconDefault,
+        tabBarActiveTintColor: colors.tabIconSelected,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: Colors.light.card,
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderTopColor: Colors.light.border,
-          height: 60,
-          paddingTop: Spacing.sm,
-          paddingBottom: Spacing.sm,
+          borderTopColor: colors.border,
+          height: 56,
+          paddingTop: Spacing.xs,
+          paddingBottom: Spacing.xs,
           paddingHorizontal: Spacing.md,
         },
         tabBarLabelStyle: {
           fontSize: Typography.caption.fontSize - 1,
           fontWeight: Typography.caption.fontWeight,
-          letterSpacing: 0.3,
+          letterSpacing: 0.2,
         },
       }}>
       <Tabs.Screen
@@ -36,16 +37,16 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="house.fill" color={color} />
+            <IconSymbol size={22} name="house.fill" color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: "Shop",
+          title: "Discover",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="magnifyingglass" color={color} />
+            <IconSymbol size={22} name="magnifyingglass" color={color} />
           ),
         }}
       />
@@ -54,7 +55,7 @@ export default function TabsLayout() {
         options={{
           title: "Bag",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="bag.fill" color={color} />
+            <IconSymbol size={22} name="bag.fill" color={color} />
           ),
         }}
       />
@@ -63,7 +64,7 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={24} name="person.fill" color={color} />
+            <IconSymbol size={22} name="person.fill" color={color} />
           ),
         }}
       />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { View, Text, ScrollView, StyleSheet, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -11,16 +11,14 @@ import { fetchProducts } from "@/supabase";
 import { Product } from "@/types";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 
+const SEARCH_BAR_HEIGHT = 46;
+
 export default function ExploreScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null,
-  );
-  const [products, setProducts] = useState<Product[]>(
-    mockSneakers as Product[],
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>(mockSneakers as Product[]);
 
   useEffect(() => {
     async function loadProducts() {
@@ -28,72 +26,63 @@ export default function ExploreScreen() {
         const { allProducts, error } = await fetchProducts();
         if (!error && allProducts && allProducts.length > 0) {
           setProducts(allProducts);
-          console.log("Explorer loaded", allProducts);
         }
       } catch (error) {
         console.error("Failed to load products:", error);
       }
     }
-
     loadProducts();
   }, []);
 
-  const brandNameById = React.useMemo(() => {
+  const brandNameById = useMemo(() => {
     const map = new Map<string, string>();
     mockBrands.forEach((b) => map.set(b.id, b.name));
     return map;
   }, []);
 
-  const categoryNameById = React.useMemo(() => {
-    const map = new Map<string, string>();
-    mockCategories.forEach((c) => map.set(c.id, c.name));
-    return map;
-  }, []);
+  const filteredSneakers = useMemo(() => {
+    return products.filter((sneaker) => {
+      // Brand filter
+      if (selectedBrandId) {
+        if (sneaker.brand_id !== selectedBrandId) return false;
+      }
+      // Category filter
+      if (selectedCategoryId) {
+        if (sneaker.category !== selectedCategoryId) return false;
+      }
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const searchable = [
+          sneaker.name,
+          brandNameById.get(sneaker.brand_id) || "",
+          sneaker.category,
+          sneaker.model || "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [products, selectedBrandId, selectedCategoryId, searchQuery, brandNameById]);
 
-  const filteredSneakers = products.filter((sneaker) => {
-    const categoryValue = (sneaker.category ?? "")
-      .toString()
-      .trim()
-      .toLowerCase();
-    const brandValue = (sneaker.brand_id ?? "").toString().trim();
-    const nameValue = (sneaker.name ?? "").toString().trim();
-    const modelValue = (sneaker.model ?? "").toString().trim();
-    const searchValue = searchQuery.trim().toLowerCase();
+  const handleSneakerPress = useCallback(
+    (id: string) => router.push(`/sneaker/${id}`),
+    [router]
+  );
 
+  const sectionTitle = useMemo(() => {
     if (selectedBrandId) {
-      const selectedBrandName = brandNameById
-        .get(selectedBrandId)
-        ?.toLowerCase();
-      const matchesBrand =
-        brandValue === selectedBrandId ||
-        brandValue === selectedBrandName ||
-        brandValue.toLowerCase() === selectedBrandName;
-      if (!matchesBrand) return false;
+      return `${brandNameById.get(selectedBrandId) ?? "Brand"}`;
     }
-
-    if (selectedCategoryId) {
-      const selectedCategoryName = categoryNameById
-        .get(selectedCategoryId)
-        ?.toLowerCase();
-      const matchesCategory =
-        categoryValue === selectedCategoryId ||
-        categoryValue === selectedCategoryName ||
-        categoryValue === selectedCategoryId.toLowerCase();
-      if (!matchesCategory) return false;
-    }
-
-    if (searchValue) {
-      const searchable =
-        `${nameValue} ${modelValue} ${brandValue}`.toLowerCase();
-      if (!searchable.includes(searchValue)) return false;
-    }
-
-    return true;
-  });
+    return "All Sneakers";
+  }, [selectedBrandId, brandNameById]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Search Header */}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>Discover</Text>
         <View style={styles.searchBar}>
@@ -108,31 +97,35 @@ export default function ExploreScreen() {
             placeholderTextColor={Colors.light.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            returnKeyType="search"
           />
         </View>
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
+        {/* Brands */}
         <PremiumSelectorSection
           type="brand"
           selectedId={selectedBrandId}
           onSelect={setSelectedBrandId}
+          showTitle={false}
         />
+
+        {/* Categories */}
         <PremiumSelectorSection
           type="category"
           selectedId={selectedCategoryId}
           onSelect={setSelectedCategoryId}
+          showTitle={false}
         />
 
         {/* Products */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {selectedBrandId
-              ? `${brandNameById.get(selectedBrandId) ?? "Brand"} Sneakers`
-              : "All Sneakers"}
-          </Text>
+          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+
           {filteredSneakers.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No results found</Text>
@@ -143,8 +136,8 @@ export default function ExploreScreen() {
                 <View key={sneaker.id} style={styles.gridItem}>
                   <SneakerCard
                     sneaker={sneaker}
-                    brandName={sneaker.brand_id || ""}
-                    onPress={() => router.push(`/sneaker/${sneaker.id}`)}
+                    brandName={brandNameById.get(sneaker.brand_id) || ""}
+                    onPress={() => handleSneakerPress(sneaker.id)}
                   />
                 </View>
               ))}
@@ -163,49 +156,47 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
     backgroundColor: Colors.light.background,
   },
   headerTitle: {
-    fontSize: Typography.heading.fontSize,
-    fontWeight: Typography.heading.fontWeight,
+    fontSize: Typography.title.fontSize,
+    fontWeight: Typography.title.fontWeight,
     color: Colors.light.text,
-    lineHeight: Typography.heading.lineHeight,
-    letterSpacing: Typography.heading.letterSpacing,
-    marginBottom: Spacing.md,
+    letterSpacing: 0.3,
+    marginBottom: Spacing.sm,
   },
   searchBar: {
+    height: SEARCH_BAR_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.light.backgroundSecondary,
+    backgroundColor: Colors.light.card,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    gap: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  searchIcon: {
-    marginRight: Spacing.xs,
-  },
   searchInput: {
     flex: 1,
-    fontSize: Typography.body.fontSize,
+    fontSize: Typography.search.fontSize,
     color: Colors.light.text,
     padding: 0,
+    marginLeft: Spacing.xs,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   section: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.section,
   },
   sectionTitle: {
     fontSize: Typography.sectionTitle.fontSize,
     fontWeight: Typography.sectionTitle.fontWeight,
     color: Colors.light.text,
-    lineHeight: Typography.sectionTitle.lineHeight,
     letterSpacing: Typography.sectionTitle.letterSpacing,
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.md,
@@ -214,11 +205,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-    paddingBottom: 80,
+    gap: Spacing.md,
   },
   gridItem: {
-    width: "48%",
+    width: "47%",
   },
   emptyContainer: {
     paddingVertical: Spacing.xxl,
@@ -227,6 +217,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: Typography.body.fontSize,
     color: Colors.light.textSecondary,
-    fontWeight: Typography.caption.fontWeight,
   },
 });

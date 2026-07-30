@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
   TextInput,
 } from "react-native";
@@ -17,16 +16,16 @@ import { fetchProducts } from "@/supabase";
 import type { Product } from "@/types";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 
+const SEARCH_BAR_HEIGHT = 46;
+
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Product[]>(
-    mockSneakers as Product[],
-  );
+  const [products, setProducts] = useState<Product[]>(mockSneakers as Product[]);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const router = useRouter();
-  const searchInputRef = useRef<TextInput | null>(null);
 
-  const brandNameById = React.useMemo(() => {
+  const brandNameById = useMemo(() => {
     const map = new Map<string, string>();
     mockBrands.forEach((brand) => map.set(brand.id, brand.name));
     return map;
@@ -43,56 +42,53 @@ export default function HomeScreen() {
         console.error("Failed to load products:", error);
       }
     }
-
     loadProducts();
   }, []);
 
-  const trendingSneakers = products.slice(0, 5);
-  const popularBrands = mockBrands;
+  const trendingSneakers = useMemo(() => products.slice(0, 6), [products]);
 
-  const filteredSneakers = React.useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+  const filteredSneakers = useMemo(() => {
     return products.filter((product) => {
+      // Brand filter
       if (selectedBrandId) {
-        const brandValue = (product.brand_id ?? "")
-          .toString()
-          .trim()
-          .toLowerCase();
-        const selectedBrandName = brandNameById
-          .get(selectedBrandId)
-          ?.toLowerCase();
-        const matchesId = brandValue === selectedBrandId;
-        const matchesName = selectedBrandName
-          ? brandValue === selectedBrandName
-          : false;
-        if (!matchesId && !matchesName) return false;
+        if (product.brand_id !== selectedBrandId) return false;
       }
-
-      if (q) {
-        const text = [
+      // Category filter
+      if (selectedCategoryId) {
+        if (product.category !== selectedCategoryId) return false;
+      }
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const searchable = [
           product.name,
-          product.description,
+          product.brand_id ? brandNameById.get(product.brand_id) : "",
           product.category,
-          product.location,
-          product.sex,
         ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        if (!text.includes(q)) return false;
+        if (!searchable.includes(q)) return false;
       }
-
       return true;
     });
-  }, [products, selectedBrandId, searchQuery, brandNameById]);
+  }, [products, selectedBrandId, selectedCategoryId, searchQuery, brandNameById]);
 
-  const sectionTitle = selectedBrandId
-    ? `${brandNameById.get(selectedBrandId) ?? "Brand"} Sneakers`
-    : "All Sneakers";
+  const handleSneakerPress = useCallback(
+    (id: string) => router.push(`/sneaker/${id}`),
+    [router]
+  );
+
+  const sectionTitle = useMemo(() => {
+    if (selectedBrandId) {
+      return `${brandNameById.get(selectedBrandId) ?? "Brand"}`;
+    }
+    return "All Sneakers";
+  }, [selectedBrandId, brandNameById]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Search Bar */}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Search Bar - Compact, 46px height */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <IconSymbol
@@ -101,24 +97,23 @@ export default function HomeScreen() {
             color={Colors.light.textTertiary}
           />
           <TextInput
-            ref={searchInputRef}
             style={styles.searchInput}
             placeholder="Search sneakers..."
             placeholderTextColor={Colors.light.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            returnKeyType="search"
           />
         </View>
       </View>
 
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}>
-        {/* Trending Today */}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
+        {/* Trending Today - Visual Hero */}
         <View style={styles.section}>
-          <View style={styles.trendingHeader}>
-            <Text style={styles.trendingTitle}>Trending Today</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Trending</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -127,8 +122,8 @@ export default function HomeScreen() {
               <View key={sneaker.id} style={styles.trendingItem}>
                 <SneakerCard
                   sneaker={sneaker}
-                  brandName={sneaker.brand_id || ""}
-                  onPress={() => router.push(`/sneaker/${sneaker.id}`)}
+                  brandName={brandNameById.get(sneaker.brand_id) || ""}
+                  onPress={() => handleSneakerPress(sneaker.id)}
                   compact
                 />
               </View>
@@ -136,20 +131,25 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Popular Brands */}
-        <View style={styles.brandsSection}>
-          <PremiumSelectorSection
-            type="brand"
-            selectedId={selectedBrandId}
-            onSelect={setSelectedBrandId}
-          />
-        </View>
+        {/* Brands */}
+        <PremiumSelectorSection
+          type="brand"
+          selectedId={selectedBrandId}
+          onSelect={setSelectedBrandId}
+          showTitle
+        />
+
+        {/* Categories */}
+        <PremiumSelectorSection
+          type="category"
+          selectedId={selectedCategoryId}
+          onSelect={setSelectedCategoryId}
+          showTitle={false}
+        />
 
         {/* All Sneakers */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-          </View>
+          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
 
           {filteredSneakers.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -161,8 +161,8 @@ export default function HomeScreen() {
                 <View key={sneaker.id} style={styles.gridItem}>
                   <SneakerCard
                     sneaker={sneaker}
-                    brandName={sneaker.brand_id || ""}
-                    onPress={() => router.push(`/sneaker/${sneaker.id}`)}
+                    brandName={brandNameById.get(sneaker.brand_id) || ""}
+                    onPress={() => handleSneakerPress(sneaker.id)}
                   />
                 </View>
               ))}
@@ -181,80 +181,60 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
     backgroundColor: Colors.light.background,
   },
   searchBar: {
+    height: SEARCH_BAR_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.light.backgroundSecondary,
+    backgroundColor: Colors.light.card,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    gap: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.light.border,
   },
-  searchIcon: {
-    marginRight: Spacing.xs,
-  },
   searchInput: {
     flex: 1,
-    fontSize: Typography.body.fontSize,
+    fontSize: Typography.search.fontSize,
     color: Colors.light.text,
     padding: 0,
+    marginLeft: Spacing.xs,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   section: {
-    marginBottom: Spacing.lg,
-  },
-  trendingHeader: {
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  trendingTitle: {
-    fontSize: Typography.sectionTitle.fontSize,
-    fontWeight: Typography.sectionTitle.fontWeight,
-    color: Colors.light.text,
-    lineHeight: Typography.sectionTitle.lineHeight,
-    letterSpacing: Typography.sectionTitle.letterSpacing,
-  },
-  trendingContent: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-    alignItems: "flex-start",
-  },
-  trendingItem: {
-    width: 150,
-    marginRight: Spacing.sm,
-  },
-  brandsSection: {
-    marginBottom: Spacing.md,
-  },
-  sectionHeader: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
+    marginBottom: Spacing.section,
   },
   sectionTitle: {
     fontSize: Typography.sectionTitle.fontSize,
     fontWeight: Typography.sectionTitle.fontWeight,
     color: Colors.light.text,
-    lineHeight: Typography.sectionTitle.lineHeight,
     letterSpacing: Typography.sectionTitle.letterSpacing,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  trendingContent: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  trendingItem: {
+    width: 140,
+    marginRight: Spacing.sm,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
-    paddingBottom: 80,
+    gap: Spacing.md,
   },
   gridItem: {
-    width: "48%",
+    width: "47%",
   },
   emptyContainer: {
     paddingVertical: Spacing.xxl,
@@ -263,6 +243,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: Typography.body.fontSize,
     color: Colors.light.textSecondary,
-    fontWeight: Typography.caption.fontWeight,
   },
 });

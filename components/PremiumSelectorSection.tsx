@@ -11,6 +11,7 @@ type PremiumSelectorSectionProps = {
   type: SelectorType;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  showTitle?: boolean;
 };
 
 const categoryIcons: Record<string, { uri: string }> = {
@@ -25,8 +26,10 @@ export default function PremiumSelectorSection({
   type,
   selectedId,
   onSelect,
+  showTitle = true,
 }: PremiumSelectorSectionProps) {
   const isAllSelected = selectedId === null;
+  const isBrand = type === "brand";
 
   const handlePress = useCallback(
     (id: string) => {
@@ -58,43 +61,53 @@ export default function PremiumSelectorSection({
           imageUrl={imageUrl}
           isSelected={isSelected}
           onPress={handlePress}
-          noBackground
+          variant={type}
         />
       );
     },
     [type, selectedId, handlePress],
   );
 
-  const title = type === "brand" ? "Brands" : "Categories";
-  const data = type === "brand" ? mockBrands : mockCategories;
-  const initialNumToRender = type === "brand" ? 6 : 5;
+  const title = isBrand ? "Brands" : "Categories";
+  const data = isBrand ? mockBrands : mockCategories;
+  const initialNumToRender = isBrand ? 6 : 5;
+  const separatorWidth = isBrand ? Spacing.sm : Spacing.xs;
 
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: Colors.light.tint }]}>
-        {title}
-      </Text>
+    <View style={[styles.section, isBrand && styles.brandSection]}>
+      {showTitle && (
+        <Text style={[styles.sectionTitle, { color: Colors.light.text }]}>
+          {title}
+        </Text>
+      )}
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: Spacing.sm }} />}
+        contentContainerStyle={[
+          styles.listContent,
+          isBrand ? styles.brandListContent : styles.categoryListContent,
+        ]}
+        ItemSeparatorComponent={() => (
+          <View style={{ width: separatorWidth }} />
+        )}
         ListHeaderComponent={
-          <PremiumSelectorCard
-            id="__all__"
-            label="All"
-            imageUrl={null}
-            isSelected={isAllSelected}
-            onPress={handlePress}
-            noBackground
-          />
+          isBrand ? (
+            <PremiumSelectorCard
+              id="__all__"
+              label="All"
+              imageUrl={null}
+              isSelected={isAllSelected}
+              onPress={handlePress}
+              variant="brand"
+            />
+          ) : null
         }
         getItemLayout={(_, index) => ({
-          length: 84,
-          offset: 84 * (index + 1),
+          length: isBrand ? 80 : 90,
+          offset: (isBrand ? 80 : 90 + separatorWidth) * index,
           index,
         })}
         windowSize={5}
@@ -108,7 +121,10 @@ export default function PremiumSelectorSection({
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.section,
+  },
+  brandSection: {
+    marginBottom: Spacing.section,
   },
   sectionTitle: {
     fontSize: Typography.sectionTitle.fontSize,
@@ -121,5 +137,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: Spacing.md,
     alignItems: "center",
+  },
+  brandListContent: {
+    paddingHorizontal: Spacing.md,
+    alignItems: "center",
+  },
+  categoryListContent: {
+    paddingHorizontal: Spacing.md,
+    alignItems: "center",
+    flexWrap: "wrap",
   },
 });
