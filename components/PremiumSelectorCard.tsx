@@ -19,8 +19,8 @@ import { Colors } from "@/constants/theme";
 const BRAND_SIZE = 66;
 const LOGO_SIZE = 32;
 
-/** Category pill size */
-const PILL_HEIGHT = 34;
+/** Category pill size - Filter style */
+const PILL_HEIGHT = 35;
 const PILL_PADDING = 16;
 
 type PremiumSelectorCardProps = {
@@ -84,7 +84,11 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
     );
   }
 
-  // Category pill variant - keep as is
+  // Category pill variant - Filter pills
+  const pillBg = isSelected ? "#111111" : "#FFFFFF";
+  const pillBorder = isSelected ? "#111111" : "#E5E5E5";
+  const pillText = isSelected ? "#FFFFFF" : "#6B7280";
+
   return (
     <AnimatedPressable
       onPress={() => {
@@ -94,16 +98,11 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
       style={[
         styles.pillContainer,
         {
-          backgroundColor: isSelected ? Colors.light.tint : Colors.light.card,
-          borderColor: isSelected ? Colors.light.tint : Colors.light.border,
+          backgroundColor: pillBg,
+          borderColor: pillBorder,
         },
       ]}>
-      <Text
-        style={[
-          styles.pillLabel,
-          { color: isSelected ? "#FFFFFF" : Colors.light.textSecondary },
-        ]}
-        numberOfLines={1}>
+      <Text style={[styles.pillLabel, { color: pillText }]} numberOfLines={1}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -146,18 +145,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Category pill styles
+  // Category pill styles - Filter style
   pillContainer: {
     height: PILL_HEIGHT,
     paddingHorizontal: PILL_PADDING,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: PILL_HEIGHT / 2,
+    borderRadius: 999,
     borderWidth: 1,
+    borderColor: "#E5E5E5",
   },
   pillLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "500",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });
