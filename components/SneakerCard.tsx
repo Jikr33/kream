@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
     color: "#6B7280",
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     marginBottom: 2,
   },
   name: {
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     color: "#111111",
     lineHeight: 20,
     letterSpacing: 0.1,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   price: {
     fontSize: 17,

@@ -212,10 +212,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   trendingTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     color: "#111111",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     marginBottom: 16,
     paddingHorizontal: 16,
   },
@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
     color: "#111111",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     marginBottom: 16,
     paddingHorizontal: 16,
   },
@@ -255,5 +255,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     color: "#6B7280",
+    letterSpacing: 0.1,
   },
 });
