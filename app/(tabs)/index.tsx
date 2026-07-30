@@ -14,9 +14,7 @@ import { mockSneakers, mockBrands } from "@/lib/mockData";
 import { useRouter } from "expo-router";
 import { fetchProducts } from "@/supabase";
 import type { Product } from "@/types";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
-
-const SEARCH_BAR_HEIGHT = 46;
+import { Colors, Typography, Spacing } from "@/constants/theme";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,15 +47,12 @@ export default function HomeScreen() {
 
   const filteredSneakers = useMemo(() => {
     return products.filter((product) => {
-      // Brand filter
       if (selectedBrandId) {
         if (product.brand_id !== selectedBrandId) return false;
       }
-      // Category filter
       if (selectedCategoryId) {
         if (product.category !== selectedCategoryId) return false;
       }
-      // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const searchable = [
@@ -88,18 +83,18 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Search Bar - Compact, 46px height */}
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <IconSymbol
             name="magnifyingglass"
             size={18}
-            color={Colors.light.textTertiary}
+            color="#9CA3AF"
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search sneakers..."
-            placeholderTextColor={Colors.light.textTertiary}
+            placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -110,14 +105,18 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        {/* Trending Today - Visual Hero */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trending</Text>
+        contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
+        snapToInterval={160}>
+        {/* Trending - Hero Section */}
+        <View style={styles.trendingSection}>
+          <Text style={styles.trendingTitle}>Trending</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trendingContent}>
+            contentContainerStyle={styles.trendingContent}
+            decelerationRate="fast"
+            snapToInterval={160}>
             {trendingSneakers.map((sneaker) => (
               <View key={sneaker.id} style={styles.trendingItem}>
                 <SneakerCard
@@ -180,9 +179,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   searchContainer: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: Colors.light.background,
   },
   searchBar: {
@@ -208,40 +207,54 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  section: {
-    marginBottom: Spacing.section,
+  // Trending Section - Hero
+  trendingSection: {
+    paddingTop: 24,
+    paddingBottom: 24,
   },
-  sectionTitle: {
-    fontSize: Typography.sectionTitle.fontSize,
-    fontWeight: Typography.sectionTitle.fontWeight,
-    color: Colors.light.text,
-    letterSpacing: Typography.sectionTitle.letterSpacing,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+  trendingTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111111",
+    letterSpacing: 0.2,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   trendingContent: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   trendingItem: {
-    width: 140,
-    marginRight: Spacing.sm,
+    width: 155,
+  },
+  // Section
+  section: {
+    paddingTop: 8,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111111",
+    letterSpacing: 0.2,
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.md,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   gridItem: {
     width: "47%",
   },
   emptyContainer: {
-    paddingVertical: Spacing.xxl,
+    paddingVertical: 48,
     alignItems: "center",
   },
   emptyText: {
-    fontSize: Typography.body.fontSize,
-    color: Colors.light.textSecondary,
+    fontSize: 13,
+    color: "#6B7280",
   },
 });
