@@ -7,7 +7,6 @@ import {
   Image,
   StyleSheet,
   Share,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -61,10 +60,8 @@ export default function SneakerDetailScreen() {
   };
 
   const handleAddToCart = () => {
-    Alert.alert(
-      "Coming Soon",
-      "Cart will be available after backend integration",
-    );
+    // Navigate to checkout for now
+    router.push("/checkout");
   };
 
   return (
