@@ -23,8 +23,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   title: {
-    fontSize: Typography.heading.fontSize,
-    fontWeight: Typography.heading.fontWeight,
+    fontSize: Typography.title.fontSize,
+    fontWeight: Typography.title.fontWeight,
     color: Colors.light.text,
     marginBottom: Spacing.lg,
   },

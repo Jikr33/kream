@@ -70,8 +70,7 @@ export default function PremiumSelectorSection({
 
   const title = isBrand ? "Brands" : "Categories";
   const data = isBrand ? mockBrands : mockCategories;
-  const initialNumToRender = isBrand ? 6 : 5;
-  const separatorWidth = isBrand ? Spacing.sm : Spacing.xs;
+  const initialNumToRender = isBrand ? 10 : 5;
 
   return (
     <View style={[styles.section, isBrand && styles.brandSection]}>
@@ -81,39 +80,25 @@ export default function PremiumSelectorSection({
         </Text>
       )}
       <FlatList
-        data={data}
+        data={isBrand ? data : data}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.listContent,
-          isBrand ? styles.brandListContent : styles.categoryListContent,
-        ]}
-        ItemSeparatorComponent={() => (
-          <View style={{ width: separatorWidth }} />
-        )}
-        ListHeaderComponent={
-          isBrand ? (
-            <PremiumSelectorCard
-              id="__all__"
-              label="All"
-              imageUrl={null}
-              isSelected={isAllSelected}
-              onPress={handlePress}
-              variant="brand"
-            />
-          ) : null
-        }
-        getItemLayout={(_, index) => ({
-          length: isBrand ? 80 : 90,
-          offset: (isBrand ? 80 : 90 + separatorWidth) * index,
-          index,
-        })}
+        contentContainerStyle={styles.listContent}
+        getItemLayout={(_, index) => {
+          const chipWidth = isBrand ? 54 : 80;
+          const gap = isBrand ? 12 : 8;
+          return {
+            length: chipWidth,
+            offset: (chipWidth + gap) * index,
+            index,
+          };
+        }}
         windowSize={5}
-        maxToRenderPerBatch={8}
+        maxToRenderPerBatch={12}
         removeClippedSubviews
-        initialNumToRender={initialNumToRender}
+        initialNumToRender={isBrand ? 10 : 5}
       />
     </View>
   );
@@ -121,32 +106,23 @@ export default function PremiumSelectorSection({
 
 const styles = StyleSheet.create({
   section: {
-    paddingTop: 8,
-    marginBottom: 32,
+    paddingTop: 16,
+    marginBottom: 16,
   },
   brandSection: {
-    paddingTop: 8,
-    marginBottom: 32,
+    paddingTop: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: 0.3,
-    marginBottom: 16,
+    fontSize: 21,
+    fontWeight: "600",
+    color: Colors.light.text,
+    letterSpacing: 0.2,
+    marginBottom: 12,
     paddingHorizontal: 16,
   },
   listContent: {
     paddingHorizontal: 16,
     alignItems: "center",
-  },
-  brandListContent: {
-    paddingHorizontal: 16,
-    alignItems: "center",
-  },
-  categoryListContent: {
-    paddingHorizontal: 16,
-    alignItems: "center",
-    flexWrap: "wrap",
   },
 });

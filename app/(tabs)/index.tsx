@@ -1,11 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import SneakerCard from "@/components/SneakerCard";
@@ -18,9 +12,13 @@ import { Colors, Typography, Spacing } from "@/constants/theme";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Product[]>(mockSneakers as Product[]);
+  const [products, setProducts] = useState<Product[]>(
+    mockSneakers as Product[],
+  );
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
   const router = useRouter();
 
   const brandNameById = useMemo(() => {
@@ -67,11 +65,17 @@ export default function HomeScreen() {
       }
       return true;
     });
-  }, [products, selectedBrandId, selectedCategoryId, searchQuery, brandNameById]);
+  }, [
+    products,
+    selectedBrandId,
+    selectedCategoryId,
+    searchQuery,
+    brandNameById,
+  ]);
 
   const handleSneakerPress = useCallback(
     (id: string) => router.push(`/sneaker/${id}`),
-    [router]
+    [router],
   );
 
   const sectionTitle = useMemo(() => {
@@ -88,13 +92,13 @@ export default function HomeScreen() {
         <View style={styles.searchBar}>
           <IconSymbol
             name="magnifyingglass"
-            size={18}
-            color="#9CA3AF"
+            size={14}
+            color={Colors.light.textTertiary}
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search sneakers..."
-            placeholderTextColor="#9CA3AF"
+            placeholder="Search"
+            placeholderTextColor={Colors.light.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -107,8 +111,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
-        snapToInterval={160}>
-        {/* Trending - Hero Section */}
+        snapToInterval={172}>
+        {/* Trending - Hero */}
         <View style={styles.trendingSection}>
           <Text style={styles.trendingTitle}>Trending</Text>
           <ScrollView
@@ -116,12 +120,16 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.trendingContent}
             decelerationRate="fast"
-            snapToInterval={160}>
+            snapToInterval={172}>
             {trendingSneakers.map((sneaker) => (
               <View key={sneaker.id} style={styles.trendingItem}>
                 <SneakerCard
                   sneaker={sneaker}
-                  brandName={brandNameById.get(sneaker.brand_id) || ""}
+                  brandName={
+                    sneaker.brand_id
+                      ? brandNameById.get(sneaker.brand_id) || ""
+                      : ""
+                  }
                   onPress={() => handleSneakerPress(sneaker.id)}
                   compact
                 />
@@ -130,21 +138,21 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Brands */}
-        <PremiumSelectorSection
-          type="brand"
-          selectedId={selectedBrandId}
-          onSelect={setSelectedBrandId}
-          showTitle
-        />
-
-        {/* Categories */}
-        <PremiumSelectorSection
-          type="category"
-          selectedId={selectedCategoryId}
-          onSelect={setSelectedCategoryId}
-          showTitle={false}
-        />
+        {/* Filters - Compact */}
+        <View style={styles.filters}>
+          <PremiumSelectorSection
+            type="brand"
+            selectedId={selectedBrandId}
+            onSelect={setSelectedBrandId}
+            showTitle
+          />
+          <PremiumSelectorSection
+            type="category"
+            selectedId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+            showTitle={false}
+          />
+        </View>
 
         {/* All Sneakers */}
         <View style={styles.section}>
@@ -160,7 +168,11 @@ export default function HomeScreen() {
                 <View key={sneaker.id} style={styles.gridItem}>
                   <SneakerCard
                     sneaker={sneaker}
-                    brandName={brandNameById.get(sneaker.brand_id) || ""}
+                    brandName={
+                      sneaker.brand_id
+                        ? brandNameById.get(sneaker.brand_id) || ""
+                        : ""
+                    }
                     onPress={() => handleSneakerPress(sneaker.id)}
                   />
                 </View>
@@ -180,25 +192,26 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
     backgroundColor: Colors.light.background,
   },
   searchBar: {
-    height: 44,
+    height: 32,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
+    backgroundColor: Colors.light.backgroundSecondary,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 0,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: "#111111",
+    fontSize: 14,
+    color: Colors.light.text,
     padding: 0,
-    marginLeft: 10,
+    marginLeft: 6,
+    fontWeight: "400",
   },
   scrollView: {
     flex: 1,
@@ -206,36 +219,35 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  // Trending Section - Hero
+  // Trending Section
   trendingSection: {
     paddingTop: 24,
     paddingBottom: 32,
   },
   trendingTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: 0.3,
+    fontSize: 21,
+    fontWeight: "600",
+    color: Colors.light.text,
+    letterSpacing: 0.2,
     marginBottom: 16,
     paddingHorizontal: 16,
   },
   trendingContent: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 16,
   },
   trendingItem: {
-    width: 152,
+    width: 156,
   },
-  // Section
+  // Section - Product grid
   section: {
-    paddingTop: 8,
-    marginBottom: 32,
+    paddingTop: 24,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111111",
-    letterSpacing: 0.3,
+    fontSize: 21,
+    fontWeight: "600",
+    color: Colors.light.text,
+    letterSpacing: 0.2,
     marginBottom: 16,
     paddingHorizontal: 16,
   },
@@ -243,7 +255,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 16,
+    marginBottom: 32,
   },
   gridItem: {
     width: "47%",
@@ -254,7 +267,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: "#6B7280",
+    color: Colors.light.textSecondary,
     letterSpacing: 0.1,
+    fontWeight: "400",
+  },
+  // Filters - inline, compact
+  filters: {
+    marginBottom: 16,
   },
 });

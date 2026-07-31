@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
   },
   orderTotal: {
-    fontSize: Typography.price.fontSize,
-    fontWeight: Typography.price.fontWeight,
+    fontSize: 22,
+    fontWeight: "700",
     color: Colors.light.text,
   },
 });

@@ -27,87 +27,104 @@ export const mockBrands: (Brand & { thumb?: string | null })[] = [
   {
     id: "brand-4",
     name: "ASICS",
-    thumb: "https://cdn.simpleicons.org/asics/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2016/03/asics-1992-2006-logo-512x230.png",
   },
   {
     id: "brand-5",
     name: "Salomon",
-    thumb: "https://cdn.simpleicons.org/salomon/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2016/11/salomon_group_2012-2022-logo_brandlogos.net_bqdlb-512x323.png",
   },
   {
     id: "brand-6",
     name: "Converse",
-    thumb: "https://cdn.simpleicons.org/converse/111111",
+    thumb:
+      "https://www.liblogo.com/img-logo/sml/co380ce16-converse-all-star-logo-converse-all-star-logo-imagenes-para-estampar-camisetas.webp",
   },
   {
     id: "brand-7",
     name: "Vans",
-    thumb: "https://cdn.simpleicons.org/vans/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/vans-logo-512x512.png",
   },
   {
     id: "brand-8",
     name: "Timberland",
-    thumb: "https://cdn.simpleicons.org/timberland/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/timberland-logo-512x512.png",
   },
   {
     id: "brand-9",
     name: "Dr. Martens",
-    thumb: "https://cdn.simpleicons.org/drmartens/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/dr-martens-logo-512x512.png",
   },
   {
     id: "brand-10",
     name: "Puma",
-    thumb: "https://cdn.simpleicons.org/puma/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/puma-logo-512x512.png",
   },
   {
     id: "brand-11",
     name: "Hoka",
-    thumb: "https://cdn.simpleicons.org/hoka/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/hoka-logo-512x512.png",
   },
   {
     id: "brand-12",
     name: "Reebok",
-    thumb: "https://cdn.simpleicons.org/reebok/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/reebok-logo-512x512.png",
   },
   {
     id: "brand-13",
     name: "Jordan",
-    thumb: "https://cdn.simpleicons.org/jordan/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/jordan-logo-512x512.png",
   },
   {
     id: "brand-14",
     name: "Balenciaga",
-    thumb: "https://cdn.simpleicons.org/balenciaga/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/balenciaga-logo-512x512.png",
   },
   {
     id: "brand-15",
     name: "Gucci",
-    thumb: "https://cdn.simpleicons.org/gucci/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/gucci-logo-512x512.png",
   },
   {
     id: "brand-16",
     name: "Louis Vuitton",
-    thumb: "https://cdn.simpleicons.org/louisvuitton/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/louis-vuitton-logo-512x512.png",
   },
   {
     id: "brand-17",
     name: "Dior",
-    thumb: "https://cdn.simpleicons.org/dior/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/dior-logo-512x512.png",
   },
   {
     id: "brand-18",
     name: "Prada",
-    thumb: "https://cdn.simpleicons.org/prada/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/prada-logo-512x512.png",
   },
   {
     id: "brand-19",
     name: "Fendi",
-    thumb: "https://cdn.simpleicons.org/fendi/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/fendi-logo-512x512.png",
   },
   {
     id: "brand-20",
     name: "Off-White",
-    thumb: "https://cdn.simpleicons.org/offwhite/111111",
+    thumb:
+      "https://brandlogos.net/wp-content/uploads/2023/01/off-white-logo-512x512.png",
   },
 ];
 
@@ -601,7 +618,7 @@ export function getSneakerWithDetails(id: string) {
   if (!sneaker) return null;
   return {
     ...sneaker,
-    brandName: sneaker.brand_id || "",
+    brandName: sneaker.brand_id ? getBrandName(sneaker.brand_id) : "",
     avgRating: getAverageRating(sneaker.id),
     reviewCount: getReviewCount(sneaker.id),
   };

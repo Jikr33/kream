@@ -1,27 +1,20 @@
 import React, { memo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
   withTiming,
-  runOnJS,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
 const AnimatedPressable = Animated.createAnimatedComponent(
-  require("react-native").Pressable as React.ComponentType<any>,
+  Pressable as React.ComponentType<any>,
 );
 
 import { Colors } from "@/constants/theme";
 
-/** Brand chip size - Compact 66px */
-const BRAND_SIZE = 66;
-const LOGO_SIZE = 32;
-
-/** Category pill size - Filter style */
-const PILL_HEIGHT = 35;
-const PILL_PADDING = 16;
+/** KREAM-style compact brand chip */
+const CHIP_SIZE = 42;
 
 type PremiumSelectorCardProps = {
   id: string;
@@ -32,7 +25,7 @@ type PremiumSelectorCardProps = {
   variant?: "brand" | "category";
 };
 
-/** Premium Brand Selector Chip */
+/** Premium Brand Chip - circular, minimal, scannable */
 const PremiumSelectorCard = memo(function PremiumSelectorCard({
   id,
   label,
@@ -43,66 +36,80 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
 }: PremiumSelectorCardProps) {
   const isBrand = variant === "brand";
 
-  const borderColor = isSelected ? "#111111" : "#E5E5E5";
-  const backgroundColor = isSelected ? "#F6F6F6" : "#FFFFFF";
-  const labelColor = isSelected ? "#111111" : "#6B7280";
-
   const animatedStyle = useAnimatedStyle(() => ({
-    borderColor: withTiming(borderColor, { duration: 150 }),
-    backgroundColor: withTiming(backgroundColor, { duration: 150 }),
+    backgroundColor: withTiming(
+      isSelected ? Colors.light.card : "transparent",
+      { duration: 150 },
+    ),
+    borderColor: withTiming(
+      isSelected ? Colors.light.text : Colors.light.border,
+      { duration: 150 },
+    ),
+    transform: [
+      {
+        scale: withTiming(isSelected ? 1 : 0.95, { duration: 150 }),
+      },
+    ],
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: isSelected ? 2 : 0 },
+    shadowOpacity: withTiming(isSelected ? 0.08 : 0, { duration: 150 }),
+    shadowRadius: withTiming(isSelected ? 4 : 0, { duration: 150 }),
+    elevation: withTiming(isSelected ? 2 : 0, { duration: 150 }),
   }));
 
-  const handlePress = () => {
-    runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    onPress(id);
-  };
-
   if (isBrand) {
+    const isAll = id === "__all__";
     return (
       <AnimatedPressable
-        onPress={handlePress}
-        style={[styles.brandContainer, animatedStyle]}>
-        <View style={styles.brandLogoContainer}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.brandLogo}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={150}
-            />
-          ) : (
-            <Text style={styles.brandInitial}>{label.charAt(0)}</Text>
-          )}
-        </View>
-        <Text
-          style={[styles.brandLabel, { color: labelColor }]}
-          numberOfLines={1}>
-          {label}
-        </Text>
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress(id);
+        }}
+        style={[styles.brandChip, animatedStyle, isAll && styles.brandChipAll]}
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isSelected }}>
+        {isAll ? (
+          <Text style={styles.allText}>All</Text>
+        ) : (
+          <Image
+            source={{ uri: imageUrl || undefined }}
+            style={styles.brandLogo}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={150}
+          />
+        )}
       </AnimatedPressable>
     );
   }
 
-  // Category pill variant - Filter pills
-  const pillBg = isSelected ? "#111111" : "#FFFFFF";
-  const pillBorder = isSelected ? "#111111" : "#E5E5E5";
-  const pillText = isSelected ? "#FFFFFF" : "#6B7280";
+  // Category pill - theme-aware
+  const categoryBg = isSelected
+    ? Colors.light.text
+    : Colors.light.backgroundSecondary;
+  const categoryTextColor = isSelected
+    ? Colors.light.card
+    : Colors.light.textSecondary;
 
   return (
     <AnimatedPressable
       onPress={() => {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress(id);
       }}
       style={[
-        styles.pillContainer,
+        styles.categoryPill,
         {
-          backgroundColor: pillBg,
-          borderColor: pillBorder,
+          backgroundColor: categoryBg,
         },
-      ]}>
-      <Text style={[styles.pillLabel, { color: pillText }]} numberOfLines={1}>
+      ]}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}>
+      <Text
+        style={[styles.pillText, { color: categoryTextColor }]}
+        numberOfLines={1}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -112,52 +119,47 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
 export default PremiumSelectorCard;
 
 const styles = StyleSheet.create({
-  // Brand chip - Compact premium selector
-  brandContainer: {
-    width: BRAND_SIZE,
-    height: BRAND_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
+  // Compact brand chip - circular, border only when selected
+  brandChip: {
+    width: CHIP_SIZE,
+    height: CHIP_SIZE,
+    borderRadius: CHIP_SIZE / 2,
     borderWidth: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  brandLogoContainer: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
+    borderColor: Colors.light.border,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
+    marginRight: 12,
+    backgroundColor: "transparent",
+  },
+  brandChipAll: {
+    backgroundColor: "transparent",
   },
   brandLogo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
+    width: 24,
+    height: 24,
   },
-  brandInitial: {
-    fontSize: 14,
+  allText: {
+    fontSize: 11,
     fontWeight: "600",
-    color: "#9CA3AF",
-  },
-  brandLabel: {
-    fontSize: 10,
-    fontWeight: "500",
-    letterSpacing: 0.3,
-    textAlign: "center",
+    color: Colors.light.textSecondary,
+    letterSpacing: 0.5,
   },
 
-  // Category pill styles - Filter style
-  pillContainer: {
-    height: PILL_HEIGHT,
-    paddingHorizontal: PILL_PADDING,
+  // Category pill
+  categoryPill: {
+    height: 32,
+    paddingHorizontal: 14,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: "transparent",
+    marginRight: 8,
+    alignSelf: "center",
   },
-  pillLabel: {
-    fontSize: 13,
+  pillText: {
+    fontSize: 12,
     fontWeight: "500",
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
 });
