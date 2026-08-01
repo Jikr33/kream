@@ -4,17 +4,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import SneakerCard from "@/components/SneakerCard";
 import PremiumSelectorSection from "@/components/PremiumSelectorSection";
-import { mockSneakers, mockBrands } from "@/lib/mockData";
+import { mockProducts } from "@/lib/mockData";
 import { useRouter } from "expo-router";
 import { fetchProducts } from "@/supabase";
 import type { Product } from "@/types";
+import { getBrandName, getBrandList } from "@/constants/brands";
 import { Colors, Typography, Spacing } from "@/constants/theme";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Product[]>(
-    mockSneakers as Product[],
-  );
+  const [products, setProducts] = useState<Product[]>(mockProducts);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
@@ -23,7 +22,7 @@ export default function HomeScreen() {
 
   const brandNameById = useMemo(() => {
     const map = new Map<string, string>();
-    mockBrands.forEach((brand) => map.set(brand.id, brand.name));
+    getBrandList().forEach((brand) => map.set(brand.id, brand.name));
     return map;
   }, []);
 
@@ -80,10 +79,10 @@ export default function HomeScreen() {
 
   const sectionTitle = useMemo(() => {
     if (selectedBrandId) {
-      return `${brandNameById.get(selectedBrandId) ?? "Brand"}`;
+      return getBrandName(selectedBrandId);
     }
     return "All Sneakers";
-  }, [selectedBrandId, brandNameById]);
+  }, [selectedBrandId]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -121,16 +120,11 @@ export default function HomeScreen() {
             contentContainerStyle={styles.trendingContent}
             decelerationRate="fast"
             snapToInterval={172}>
-            {trendingSneakers.map((sneaker) => (
-              <View key={sneaker.id} style={styles.trendingItem}>
+            {trendingSneakers.map((product) => (
+              <View key={product.id} style={styles.trendingItem}>
                 <SneakerCard
-                  sneaker={sneaker}
-                  brandName={
-                    sneaker.brand_id
-                      ? brandNameById.get(sneaker.brand_id) || ""
-                      : ""
-                  }
-                  onPress={() => handleSneakerPress(sneaker.id)}
+                  sneaker={product}
+                  onPress={() => handleSneakerPress(product.id)}
                   compact
                 />
               </View>
@@ -164,16 +158,11 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View style={styles.grid}>
-              {filteredSneakers.map((sneaker) => (
-                <View key={sneaker.id} style={styles.gridItem}>
+              {filteredSneakers.map((product) => (
+                <View key={product.id} style={styles.gridItem}>
                   <SneakerCard
-                    sneaker={sneaker}
-                    brandName={
-                      sneaker.brand_id
-                        ? brandNameById.get(sneaker.brand_id) || ""
-                        : ""
-                    }
-                    onPress={() => handleSneakerPress(sneaker.id)}
+                    sneaker={product}
+                    onPress={() => handleSneakerPress(product.id)}
                   />
                 </View>
               ))}
@@ -221,45 +210,45 @@ const styles = StyleSheet.create({
   },
   // Trending Section
   trendingSection: {
-    paddingTop: 24,
-    paddingBottom: 32,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   trendingTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "600",
     color: Colors.light.text,
-    letterSpacing: 0.2,
-    marginBottom: 16,
+    letterSpacing: 0.15,
+    marginBottom: 12,
     paddingHorizontal: 16,
   },
   trendingContent: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 12,
   },
   trendingItem: {
-    width: 156,
+    width: 140,
   },
   // Section - Product grid
   section: {
-    paddingTop: 24,
+    paddingTop: 20,
   },
   sectionTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "600",
     color: Colors.light.text,
-    letterSpacing: 0.2,
-    marginBottom: 16,
+    letterSpacing: 0.15,
+    marginBottom: 12,
     paddingHorizontal: 16,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 16,
-    gap: 16,
-    marginBottom: 32,
+    gap: 12,
+    marginBottom: 24,
   },
   gridItem: {
-    width: "47%",
+    width: "47.5%",
   },
   emptyContainer: {
     paddingVertical: 48,
@@ -273,6 +262,6 @@ const styles = StyleSheet.create({
   },
   // Filters - inline, compact
   filters: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
 });

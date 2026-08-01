@@ -2,7 +2,8 @@ import React, { useCallback } from "react";
 import { View, Text, StyleSheet, FlatList } from "react-native";
 
 import PremiumSelectorCard from "./PremiumSelectorCard";
-import { mockBrands, mockCategories } from "@/lib/mockData";
+import { mockCategories } from "@/lib/mockData";
+import { getBrandList } from "@/constants/brands";
 import { Colors, Spacing, Typography } from "@/constants/theme";
 
 type SelectorType = "brand" | "category";
@@ -46,13 +47,13 @@ export default function PremiumSelectorSection({
     ({
       item,
     }: {
-      item: { id: string; name: string; thumb?: string | null };
+      item: { id: string; name: string; thumb?: string | null; logo?: string };
     }) => {
       const isSelected = selectedId === item.id;
       const imageUrl =
         type === "category"
           ? categoryIcons[item.id]?.uri || null
-          : item.thumb || null;
+          : item.logo || item.thumb || null;
 
       return (
         <PremiumSelectorCard
@@ -69,7 +70,7 @@ export default function PremiumSelectorSection({
   );
 
   const title = isBrand ? "Brands" : "Categories";
-  const data = isBrand ? mockBrands : mockCategories;
+  const data = isBrand ? getBrandList() : mockCategories;
   const initialNumToRender = isBrand ? 10 : 5;
 
   return (

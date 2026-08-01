@@ -1,9 +1,10 @@
-import React, { memo } from "react";
+import React, { memo, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
-  withTiming,
+  useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
@@ -35,27 +36,57 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
   variant = "brand",
 }: PremiumSelectorCardProps) {
   const isBrand = variant === "brand";
+  const selected = useSharedValue(isSelected ? 1 : 0);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    backgroundColor: withTiming(
-      isSelected ? Colors.light.card : "transparent",
-      { duration: 150 },
-    ),
-    borderColor: withTiming(
-      isSelected ? Colors.light.text : Colors.light.border,
-      { duration: 150 },
-    ),
-    transform: [
-      {
-        scale: withTiming(isSelected ? 1 : 0.95, { duration: 150 }),
-      },
-    ],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: isSelected ? 2 : 0 },
-    shadowOpacity: withTiming(isSelected ? 0.08 : 0, { duration: 150 }),
-    shadowRadius: withTiming(isSelected ? 4 : 0, { duration: 150 }),
-    elevation: withTiming(isSelected ? 2 : 0, { duration: 150 }),
-  }));
+  useEffect(() => {
+    selected.value = withSpring(isSelected ? 1 : 0, {
+      damping: 15,
+      stiffness: 200,
+      mass: 0.5,
+    });
+  }, [isSelected]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const isActive = selected.value === 1;
+    return {
+      backgroundColor: withSpring(
+        isActive ? Colors.light.card : "transparent",
+        {
+          damping: 15,
+          stiffness: 200,
+        },
+      ),
+      borderColor: withSpring(
+        isActive ? Colors.light.text : Colors.light.border,
+        {
+          damping: 15,
+          stiffness: 200,
+        },
+      ),
+      transform: [
+        {
+          scale: withSpring(isActive ? 1.15 : 1, {
+            damping: 15,
+            stiffness: 200,
+          }),
+        },
+      ],
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: selected.value === 1 ? 2 : 0 },
+      shadowOpacity: withSpring(selected.value === 1 ? 0.08 : 0, {
+        damping: 15,
+        stiffness: 200,
+      }),
+      shadowRadius: withSpring(selected.value === 1 ? 4 : 0, {
+        damping: 15,
+        stiffness: 200,
+      }),
+      elevation: withSpring(selected.value === 1 ? 2 : 0, {
+        damping: 15,
+        stiffness: 200,
+      }),
+    };
+  });
 
   if (isBrand) {
     const isAll = id === "__all__";

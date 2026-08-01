@@ -12,26 +12,31 @@ export type TableRow<T> = {
 export type Brand = {
   id: string;
   name: string;
+  logo: string;
+};
+export type Product = {
+  id: string;
+  brand_id: string;
+  name: string;
+  description: string;
+  price: number;
+  thumb: string;
+  available_colors: string[] | null;
+  available_sizes: number[] | null;
+  cargo_fee: number;
+  shipment_days: number;
+  sex: "male" | "female" | "unisex";
+  category: string | null;
+  location: string;
+  is_available: boolean;
+  created_at: string;
+  user_id: string | null;
 };
 
-export type Sneaker = {
-  id: string;
-  brand_id?: string | null;
-  name: string;
-  model?: string | null;
-  description?: string | null;
-  price: number;
-  original_price?: number | null;
-  size?: number | null;
-  condition?: string | null;
-  release_date?: string | null;
-  image_url?: string | null;
-  thumb?: string | null;
-  stock?: number | null;
-  status?: string | null;
-  category?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
+export type ProductWithDetails = Product & {
+  brandName: string;
+  avgRating: number;
+  reviewCount: number;
 };
 
 export type Review = {
@@ -63,37 +68,9 @@ export type OrderItem = {
   created_at?: string | null;
 };
 
-export type SneakerWithDetails = Sneaker & {
-  brandName: string;
-  avgRating: number;
-  reviewCount: number;
-};
-
-export type Product = {
-  id: string;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  location?: string | null;
-  price?: number;
-  is_available?: boolean;
-  sex?: string | null;
-  sizes?: string | null;
-  cargo_fee?: number;
-  created_at?: string;
-  user_id?: string | null;
-  brand_id?: string | null;
-  image_url?: string | null;
-  model?: string;
-  status?: string;
-  thumb?: string | null;
-};
-
 export type SneakerCardProps = {
-  sneaker: Sneaker | Product;
-  brandName?: string;
+  sneaker: Product;
   onPress: () => void;
-  likes?: number;
   compact?: boolean;
 };
 
@@ -129,14 +106,35 @@ export type IconSymbolName =
 export type TranslationKey = keyof typeof translationValues;
 export type ColorName = keyof typeof Colors.light;
 
+export type AddressData = {
+  recipientName: string;
+  phoneNumber: string;
+  email: string;
+  country: string;
+  city: string;
+  district: string;
+  streetAddress: string;
+  postalCode: string;
+  deliveryInstructions: string;
+};
+
+export type UserProfile = {
+  id: string;
+  email?: string;
+  address?: AddressData;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type Database = {
   public: {
     Tables: {
       brands: TableRow<Brand>;
-      sneakers: TableRow<Sneaker>;
+      products: TableRow<Product>;
       reviews: TableRow<Review>;
       orders: TableRow<Order>;
       order_items: TableRow<OrderItem>;
+      profiles: TableRow<UserProfile>;
     };
   };
 };

@@ -1,12 +1,25 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { getCart } from "@/utils/storage";
 
 export default function CartScreen() {
   const router = useRouter();
+  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadCart();
+  }, []);
+
+  const loadCart = async () => {
+    const cart = await getCart();
+    if (cart?.items) {
+      setCartItems(cart.items);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -17,14 +30,30 @@ export default function CartScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Your cart is empty</Text>
-        <TouchableOpacity
-          style={styles.shopButton}
-          onPress={() => router.push("/(tabs)/explore")}>
-          <Text style={styles.shopButtonText}>Continue Shopping</Text>
-        </TouchableOpacity>
-      </View>
+      {cartItems.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Your cart is empty</Text>
+          <TouchableOpacity
+            style={styles.shopButton}
+            onPress={() => router.push("/(tabs)/explore")}>
+            <Text style={styles.shopButtonText}>Continue Shopping</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.cartContent}>
+          {cartItems.map((item) => (
+            <View key={item.id} style={styles.cartItem}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.itemDetails}>
+                {item.brand} • Size: {item.size} • Qty: {item.quantity}
+              </Text>
+              <Text style={styles.itemPrice}>
+                ₮{(item.price * item.quantity).toLocaleString("mn-MN")}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -81,5 +110,34 @@ const styles = StyleSheet.create({
     fontWeight: Typography.body.fontWeight,
     color: "#fff",
     letterSpacing: 0.3,
+  },
+  cartContent: {
+    flex: 1,
+    padding: Spacing.md,
+  },
+  cartItem: {
+    backgroundColor: Colors.light.card,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  itemName: {
+    fontSize: Typography.body.fontSize,
+    fontWeight: Typography.body.fontWeight,
+    color: Colors.light.text,
+    marginBottom: 4,
+  },
+  itemDetails: {
+    fontSize: Typography.caption.fontSize,
+    color: Colors.light.textSecondary,
+    marginBottom: 8,
+  },
+  itemPrice: {
+    fontSize: Typography.body.fontSize,
+    fontWeight: "700",
+    color: Colors.light.text,
+    textAlign: "right",
   },
 });

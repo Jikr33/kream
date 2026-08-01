@@ -11,13 +11,12 @@ import type {
   Brand,
   Order,
   OrderItem,
+  Product,
+  ProductWithDetails,
   Review,
-  Sneaker,
-  SneakerWithDetails,
 } from "@/types";
 import {
-  mockBrands,
-  mockSneakers,
+  mockProducts,
   mockReviews,
   mockOrders,
   mockOrderItems,
@@ -26,8 +25,6 @@ import {
   getBrandName,
 } from "@/lib/mockData";
 
-type SneakerWithBrand = Sneaker & { brands?: { name: string } | null };
-
 const isSupabaseConfigured =
   !!process.env.EXPO_PUBLIC_SUPABASE_URL &&
   !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY &&
@@ -35,66 +32,66 @@ const isSupabaseConfigured =
 
 // ─── Sneakers ────────────────────────────────────────────
 
-export async function fetchSneakers(): Promise<SneakerWithDetails[]> {
+export async function fetchSneakers(): Promise<ProductWithDetails[]> {
   if (!isSupabaseConfigured) {
-    return mockSneakers.map((s: Sneaker) => ({
-      ...s,
-      brandName: getBrandName(s.brand_id),
-      avgRating: getAverageRating(s.id),
-      reviewCount: getReviewCount(s.id),
+    return mockProducts.map((p: Product) => ({
+      ...p,
+      brandName: getBrandName(p.brand_id),
+      avgRating: getAverageRating(p.id),
+      reviewCount: getReviewCount(p.id),
     }));
   }
   try {
     const { data, error } = await supabase
-      .from("sneakers")
-      .select("*, brands(name)")
-      .eq("status", "active")
+      .from("products")
+      .select("*")
+      .eq("is_available", true)
       .order("created_at", { ascending: false });
     if (error || !data) return fallbackSneakers();
-    return (data as any[]).map((s) => ({
-      ...s,
-      brandName: s.brands?.name ?? getBrandName(s.brand_id),
-      avgRating: getAverageRating(s.id),
-      reviewCount: getReviewCount(s.id),
+    return (data as any[]).map((p) => ({
+      ...p,
+      brandName: getBrandName(p.brand_id),
+      avgRating: getAverageRating(p.id),
+      reviewCount: getReviewCount(p.id),
     }));
   } catch {
     return fallbackSneakers();
   }
 }
 
-function fallbackSneakers(): SneakerWithDetails[] {
-  return mockSneakers.map((s) => ({
-    ...s,
-    brandName: getBrandName(s.brand_id),
-    avgRating: getAverageRating(s.id),
-    reviewCount: getReviewCount(s.id),
+function fallbackSneakers(): ProductWithDetails[] {
+  return mockProducts.map((p) => ({
+    ...p,
+    brandName: getBrandName(p.brand_id),
+    avgRating: getAverageRating(p.id),
+    reviewCount: getReviewCount(p.id),
   }));
 }
 
 export async function fetchSneakerById(
   id: string,
-): Promise<SneakerWithDetails | null> {
+): Promise<ProductWithDetails | null> {
   if (!isSupabaseConfigured) {
-    const s = mockSneakers.find((s) => s.id === id);
-    if (!s) return null;
+    const p = mockProducts.find((p) => p.id === id);
+    if (!p) return null;
     return {
-      ...s,
-      brandName: getBrandName(s.brand_id),
-      avgRating: getAverageRating(s.id),
-      reviewCount: getReviewCount(s.id),
+      ...p,
+      brandName: getBrandName(p.brand_id),
+      avgRating: getAverageRating(p.id),
+      reviewCount: getReviewCount(p.id),
     };
   }
   try {
     const { data, error } = await supabase
-      .from("sneakers")
-      .select("*, brands(name)")
+      .from("products")
+      .select("*")
       .eq("id", id)
       .single();
     if (error || !data) return null;
     const result = data as any;
     return {
       ...result,
-      brandName: result.brands?.name ?? getBrandName(result.brand_id),
+      brandName: getBrandName(result.brand_id),
       avgRating: getAverageRating(result.id),
       reviewCount: getReviewCount(result.id),
     };
@@ -107,11 +104,10 @@ export async function searchSneakers(
   query: string,
   filters?: {
     brandId?: string;
-    condition?: string;
     minPrice?: number;
     maxPrice?: number;
   },
-): Promise<SneakerWithDetails[]> {
+): Promise<ProductWithDetails[]> {
   let results = await fetchSneakers();
 
   if (query.trim()) {
@@ -119,16 +115,12 @@ export async function searchSneakers(
     results = results.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.model?.toLowerCase().includes(q) ||
         s.brandName.toLowerCase().includes(q),
     );
   }
 
   if (filters?.brandId) {
     results = results.filter((s) => s.brand_id === filters.brandId);
-  }
-  if (filters?.condition) {
-    results = results.filter((s) => s.condition === filters.condition);
   }
   if (filters?.minPrice !== undefined) {
     results = results.filter((s) => s.price >= filters.minPrice!);
@@ -181,7 +173,7 @@ export async function fetchUserOrders(userId?: string): Promise<Order[]> {
 
 export async function fetchOrderById(orderId: string): Promise<{
   order: Order;
-  items: (OrderItem & { sneaker: Sneaker | null })[];
+  items: (OrderItem & { sneaker: Product | null })[];
 } | null> {
   if (!isSupabaseConfigured) {
     const order = mockOrders.find((o) => o.id === orderId);
@@ -190,7 +182,7 @@ export async function fetchOrderById(orderId: string): Promise<{
       .filter((oi) => oi.order_id === orderId)
       .map((oi) => {
         const sneaker =
-          mockSneakers.find((s) => s.id === oi.sneaker_id) ?? null;
+          mockProducts.find((s) => s.id === oi.sneaker_id) ?? null;
         return { ...oi, sneaker };
       });
     return { order, items };
@@ -205,7 +197,7 @@ export async function fetchOrderById(orderId: string): Promise<{
 
     const { data: items, error: itemsError } = await supabase
       .from("order_items")
-      .select("*, sneakers(*)")
+      .select("*, products(*)")
       .eq("order_id", orderId);
 
     if (itemsError || !items) return { order, items: [] };
@@ -214,7 +206,7 @@ export async function fetchOrderById(orderId: string): Promise<{
       order,
       items: (items as any[]).map((i: any) => ({
         ...i,
-        sneaker: i.sneakers,
+        sneaker: i.products,
       })),
     };
   } catch {

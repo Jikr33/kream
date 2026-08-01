@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useCallback } from "react";
+import React, { memo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Animated,
+  Dimensions,
 } from "react-native";
-import { BorderRadius } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Colors, BorderRadius, Shadows } from "@/constants/theme";
 
 export type AddressData = {
   recipientName: string;
@@ -21,7 +24,7 @@ export type AddressData = {
   district: string;
   streetAddress: string;
   postalCode: string;
-  deliveryInstructions?: string;
+  deliveryInstructions: string;
 };
 
 type AddressBottomSheetProps = {
@@ -29,152 +32,326 @@ type AddressBottomSheetProps = {
   onClose: () => void;
   onSave: (address: AddressData) => void;
   initialAddress?: AddressData | null;
+  userEmail?: string | null;
 };
 
-const STORAGE_KEY = "guest_checkout_address";
-
-// Storage helper with graceful fallback for web
-const storage = {
-  async get(key: string): Promise<AddressData | null> {
-    try {
-      const SecureStore = require("expo-secure-store");
-      const data = await SecureStore.getItemAsync(key);
-      return data ? JSON.parse(data) : null;
-    } catch {
-      // Fallback for web
-      try {
-        const data = global.localStorage?.getItem(key);
-        return data ? JSON.parse(data) : null;
-      } catch {
-        return null;
-      }
-    }
-  },
-  async set(key: string, value: AddressData): Promise<void> {
-    try {
-      const SecureStore = require("expo-secure-store");
-      await SecureStore.setItemAsync(key, JSON.stringify(value));
-    } catch {
-      // Fallback for web
-      try {
-        global.localStorage?.setItem(key, JSON.stringify(value));
-      } catch {
-        // Silently fail - address will still be passed to onSave
-      }
-    }
-  },
+const EMPTY_ADDRESS: AddressData = {
+  recipientName: "",
+  phoneNumber: "",
+  email: "",
+  country: "Mongolia",
+  city: "Ulaanbaatar",
+  district: "",
+  streetAddress: "",
+  postalCode: "",
+  deliveryInstructions: "",
 };
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const BOTTOM_SHEET_HEIGHT = SCREEN_HEIGHT * 0.65;
 
 const AddressBottomSheet = memo(function AddressBottomSheet({
   visible,
   onClose,
   onSave,
   initialAddress,
+  userEmail,
 }: AddressBottomSheetProps) {
-  const [formData, setFormData] = useState<AddressData>({
-    recipientName: "",
-    phoneNumber: "",
-    email: "",
-    country: "Mongolia",
-    city: "",
-    district: "",
-    streetAddress: "",
-    postalCode: "",
-    deliveryInstructions: "",
-  });
-  const [errors, setErrors] = useState<Partial<Record<keyof AddressData, string>>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [address, setAddress] = useState<AddressData>(EMPTY_ADDRESS);
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof AddressData, string>>
+  >({});
+  const [slideAnim] = useState(new Animated.Value(0));
 
-  // Load saved address when visible
   useEffect(() => {
     if (visible) {
-      loadSavedAddress();
-    }
-  }, [visible]);
-
-  const loadSavedAddress = useCallback(async () => {
-    try {
-      const saved = await storage.get(STORAGE_KEY);
-      if (saved) {
-        setFormData(saved);
-      } else if (initialAddress) {
-        setFormData(initialAddress);
+      if (initialAddress) {
+        setAddress(initialAddress);
+      } else {
+        setAddress({
+          ...EMPTY_ADDRESS,
+          email: userEmail || "",
+        });
       }
-    } catch (error) {
-      console.error("Failed to load address:", error);
+      setErrors({});
+      Animated.spring(slideAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 60,
+        stiffness: 200,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [initialAddress]);
+  }, [visible, initialAddress, userEmail]);
 
-  const updateField = useCallback((field: keyof AddressData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
-  }, [errors]);
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const validate = useCallback((): boolean => {
+  const validateForm = useCallback((): boolean => {
     const newErrors: Partial<Record<keyof AddressData, string>> = {};
 
-    if (!formData.recipientName.trim()) {
-      newErrors.recipientName = "Name is required";
+    if (!address.recipientName.trim()) {
+      newErrors.recipientName = "Recipient name is required";
     }
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone is required";
+
+    if (!address.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Phone number is required";
     }
-    if (!formData.email.trim()) {
+
+    if (!address.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
+    } else if (!validateEmail(address.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
-    if (!formData.city.trim()) {
+
+    if (!address.city.trim()) {
       newErrors.city = "City is required";
     }
-    if (!formData.streetAddress.trim()) {
-      newErrors.streetAddress = "Address is required";
+
+    if (!address.district.trim()) {
+      newErrors.district = "District is required";
+    }
+
+    if (!address.streetAddress.trim()) {
+      newErrors.streetAddress = "Street address is required";
+    }
+
+    if (!address.postalCode.trim()) {
+      newErrors.postalCode = "Postal code is required";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [address]);
 
-  const handleSave = useCallback(async () => {
-    if (!validate()) return;
-
-    setIsLoading(true);
-    try {
-      await storage.set(STORAGE_KEY, formData);
-      onSave(formData);
+  const handleSave = useCallback(() => {
+    if (validateForm()) {
+      onSave(address);
       onClose();
-    } catch (error) {
-      console.error("Failed to save address:", error);
-    } finally {
-      setIsLoading(false);
     }
-  }, [formData, onSave, onClose, validate]);
+  }, [address, validateForm, onSave, onClose]);
 
-  const InputField = ({
-    label,
-    value,
-    onChangeText,
-    placeholder,
-    error,
-    keyboardType = "default",
-    multiline = false,
-  }: {
-    label: string;
-    value: string;
-    onChangeText: (text: string) => void;
-    placeholder?: string;
-    error?: string;
-    keyboardType?: "default" | "email-address" | "phone-pad" | "numeric";
-    multiline?: boolean;
-  }) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.inputLabel}>{label}</Text>
+  const updateField = useCallback(
+    (field: keyof AddressData, value: string) => {
+      setAddress((prev) => ({ ...prev, [field]: value }));
+      if (errors[field]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    },
+    [errors],
+  );
+
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [BOTTOM_SHEET_HEIGHT, 0],
+  });
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              transform: [{ translateY }],
+              height: BOTTOM_SHEET_HEIGHT,
+            },
+          ]}>
+          <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
+            <View style={styles.handle} />
+
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Shipping Address</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <MaterialIcons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled">
+              <View style={styles.form}>
+                <FieldInput
+                  label="Recipient Name"
+                  value={address.recipientName}
+                  onChangeText={(text) => updateField("recipientName", text)}
+                  error={errors.recipientName}
+                  placeholder="Enter recipient name"
+                  autoCapitalize="words"
+                />
+
+                <FieldInput
+                  label="Phone Number"
+                  value={address.phoneNumber}
+                  onChangeText={(text) => updateField("phoneNumber", text)}
+                  error={errors.phoneNumber}
+                  placeholder="+82 10-0000-0000"
+                  keyboardType="phone-pad"
+                />
+
+                <FieldInput
+                  label="Email Address"
+                  value={address.email}
+                  onChangeText={(text) => updateField("email", text)}
+                  error={errors.email}
+                  placeholder="example@email.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.halfField}>
+                    <FieldInput
+                      label="Country"
+                      value={address.country}
+                      onChangeText={(text) => updateField("country", text)}
+                      placeholder="Country"
+                      editable={false}
+                    />
+                  </View>
+                  <View style={styles.halfField}>
+                    <FieldInput
+                      label="City"
+                      value={address.city}
+                      onChangeText={(text) => updateField("city", text)}
+                      error={errors.city}
+                      placeholder="City"
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </View>
+
+                <FieldInput
+                  label="District"
+                  value={address.district}
+                  onChangeText={(text) => updateField("district", text)}
+                  error={errors.district}
+                  placeholder="District / Khoroo"
+                  autoCapitalize="words"
+                />
+
+                <FieldInput
+                  label="Street Address"
+                  value={address.streetAddress}
+                  onChangeText={(text) => updateField("streetAddress", text)}
+                  error={errors.streetAddress}
+                  placeholder="Street, building, apartment"
+                  autoCapitalize="sentences"
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.halfField}>
+                    <FieldInput
+                      label="Postal Code"
+                      value={address.postalCode}
+                      onChangeText={(text) => updateField("postalCode", text)}
+                      error={errors.postalCode}
+                      placeholder="00000"
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.textAreaContainer}>
+                  <Text style={styles.label}>
+                    Delivery Instructions (Optional)
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.textArea,
+                      errors.deliveryInstructions && styles.inputError,
+                    ]}
+                    value={address.deliveryInstructions}
+                    onChangeText={(text) =>
+                      updateField("deliveryInstructions", text)
+                    }
+                    placeholder="Any special delivery instructions..."
+                    placeholderTextColor="#9CA3AF"
+                    multiline
+                    numberOfLines={3}
+                    maxLength={200}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={onClose}
+                activeOpacity={0.7}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSave}
+                activeOpacity={0.7}>
+                <Text style={styles.saveButtonText}>Save Address</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+});
+
+type FieldInputProps = {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  error?: string;
+  placeholder?: string;
+  keyboardType?: "default" | "email-address" | "phone-pad" | "number-pad";
+  autoCapitalize?: "none" | "sentences" | "words";
+  editable?: boolean;
+  maxLength?: number;
+};
+
+const FieldInput = memo(function FieldInput({
+  label,
+  value,
+  onChangeText,
+  error,
+  placeholder,
+  keyboardType = "default",
+  autoCapitalize = "none",
+  editable = true,
+  maxLength,
+}: FieldInputProps) {
+  return (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.label}>{label}</Text>
       <TextInput
         style={[
           styles.input,
-          multiline && styles.inputMultiline,
+          !editable && styles.inputDisabled,
           error && styles.inputError,
         ]}
         value={value}
@@ -182,216 +359,169 @@ const AddressBottomSheet = memo(function AddressBottomSheet({
         placeholder={placeholder}
         placeholderTextColor="#9CA3AF"
         keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
+        autoCapitalize={autoCapitalize}
+        editable={editable}
+        maxLength={maxLength}
       />
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
-  );
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Shipping Address</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            style={styles.headerButton}
-            disabled={isLoading}>
-            <Text style={[styles.saveText, isLoading && styles.saveTextDisabled]}>
-              {isLoading ? "Saving..." : "Save"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          <InputField
-            label="Recipient Name"
-            value={formData.recipientName}
-            onChangeText={(v) => updateField("recipientName", v)}
-            placeholder="Full name"
-            error={errors.recipientName}
-          />
-
-          <InputField
-            label="Phone Number"
-            value={formData.phoneNumber}
-            onChangeText={(v) => updateField("phoneNumber", v)}
-            placeholder="+976"
-            keyboardType="phone-pad"
-            error={errors.phoneNumber}
-          />
-
-          <InputField
-            label="Email"
-            value={formData.email}
-            onChangeText={(v) => updateField("email", v)}
-            placeholder="email@example.com"
-            keyboardType="email-address"
-            error={errors.email}
-          />
-
-          <InputField
-            label="Country"
-            value={formData.country}
-            onChangeText={(v) => updateField("country", v)}
-            placeholder="Country"
-          />
-
-          <View style={styles.row}>
-            <View style={styles.halfInput}>
-              <InputField
-                label="City"
-                value={formData.city}
-                onChangeText={(v) => updateField("city", v)}
-                placeholder="City"
-                error={errors.city}
-              />
-            </View>
-            <View style={styles.halfInput}>
-              <InputField
-                label="District"
-                value={formData.district}
-                onChangeText={(v) => updateField("district", v)}
-                placeholder="District"
-              />
-            </View>
-          </View>
-
-          <InputField
-            label="Street Address"
-            value={formData.streetAddress}
-            onChangeText={(v) => updateField("streetAddress", v)}
-            placeholder="Building, street, unit"
-            error={errors.streetAddress}
-          />
-
-          <InputField
-            label="Postal Code"
-            value={formData.postalCode}
-            onChangeText={(v) => updateField("postalCode", v)}
-            placeholder="Postal code"
-            keyboardType="numeric"
-          />
-
-          <InputField
-            label="Delivery Instructions (Optional)"
-            value={formData.deliveryInstructions || ""}
-            onChangeText={(v) => updateField("deliveryInstructions", v)}
-            placeholder="Gate code, landmarks, etc."
-            multiline
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Modal>
   );
 });
 
 export default AddressBottomSheet;
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  sheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#D1D5DB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#ECECEC",
-    backgroundColor: "#FFFFFF",
-  },
-  headerButton: {
-    minWidth: 60,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
     color: "#111111",
-    letterSpacing: 0.1,
+    letterSpacing: 0.3,
   },
-  cancelText: {
-    fontSize: 15,
-    fontWeight: "400",
-    color: "#6B7280",
-    letterSpacing: 0.1,
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111111",
-    letterSpacing: 0.1,
-    textAlign: "right",
-  },
-  saveTextDisabled: {
-    color: "#D1D5DB",
+  closeButton: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+  form: {
+    padding: 20,
+    gap: 16,
   },
   row: {
     flexDirection: "row",
     gap: 12,
   },
-  halfInput: {
+  halfField: {
     flex: 1,
   },
-  inputContainer: {
-    marginBottom: 16,
+  fieldContainer: {
+    gap: 6,
   },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#6B7280",
-    letterSpacing: 0.3,
-    marginBottom: 6,
-    textTransform: "uppercase",
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111111",
+    letterSpacing: 0.2,
+    marginBottom: 4,
   },
   input: {
     backgroundColor: "#FFFFFF",
     borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: "#ECECEC",
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
+    fontWeight: "400",
     color: "#111111",
     letterSpacing: 0.1,
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+    minHeight: 48,
   },
-  inputMultiline: {
-    minHeight: 80,
-    textAlignVertical: "top",
-    paddingTop: 12,
+  inputDisabled: {
+    backgroundColor: "#F5F5F4",
+    color: "#6B7280",
   },
   inputError: {
     borderColor: "#DC2626",
+    backgroundColor: "#FEF2F2",
+  },
+  textAreaContainer: {
+    gap: 6,
+  },
+  textArea: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: "400",
+    color: "#111111",
+    letterSpacing: 0.1,
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+    minHeight: 80,
   },
   errorText: {
     fontSize: 12,
     fontWeight: "400",
     color: "#DC2626",
     letterSpacing: 0.1,
-    marginTop: 4,
+    marginTop: 2,
+  },
+  footer: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#ECECEC",
+  },
+  cancelButton: {
+    flex: 1,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+    backgroundColor: "#FFFFFF",
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111111",
+    letterSpacing: 0.1,
+  },
+  saveButton: {
+    flex: 1,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: BorderRadius.md,
+    backgroundColor: "#111111",
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
   },
 });

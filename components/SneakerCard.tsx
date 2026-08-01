@@ -9,17 +9,18 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import type { SneakerCardProps } from "@/types";
+import { getBrandName } from "@/constants/brands";
 import { Colors } from "@/constants/theme";
 
 /** Premium SneakerCard - Compact, elegant, image-focused */
 const SneakerCard = memo(function SneakerCard({
   sneaker,
-  brandName,
   onPress,
   compact = false,
 }: SneakerCardProps & { compact?: boolean }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const imageUri = sneaker.image_url || sneaker.thumb || undefined;
+  const imageUri = sneaker.thumb || undefined;
+  const brandName = getBrandName(sneaker.brand_id);
 
   const handlePressIn = () => {
     Animated.timing(scale, {
@@ -80,7 +81,7 @@ const SneakerCard = memo(function SneakerCard({
             {sneaker.name}
           </Text>
           <Text style={styles.price}>
-            {(sneaker.price || 0).toLocaleString("mn-MN")}₮
+            {sneaker.price.toLocaleString("mn-MN")}₮
           </Text>
         </View>
       </Animated.View>
@@ -91,9 +92,9 @@ const SneakerCard = memo(function SneakerCard({
 export default SneakerCard;
 
 /** Premium Card Dimensions */
-const CARD_RADIUS = 14;
-const IMAGE_HEIGHT = 120;
-const IMAGE_HEIGHT_COMPACT = 110;
+const CARD_RADIUS = 12;
+const IMAGE_HEIGHT = 110;
+const IMAGE_HEIGHT_COMPACT = 100;
 
 const styles = StyleSheet.create({
   card: {
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 10,
-    gap: 4,
+    gap: 3,
   },
   infoCompact: {
     paddingHorizontal: 8,
@@ -164,24 +165,24 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   brand: {
-    fontSize: 10,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "500",
     color: Colors.light.textSecondary,
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
     textTransform: "uppercase",
   },
   name: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.light.text,
-    lineHeight: 20,
-    letterSpacing: 0.15,
+    lineHeight: 18,
+    letterSpacing: 0.1,
   },
   price: {
     fontSize: 15,
     fontWeight: "700",
     color: Colors.light.text,
-    letterSpacing: 0.15,
+    letterSpacing: 0.1,
     marginTop: 4,
   },
 });

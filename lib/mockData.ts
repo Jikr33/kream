@@ -6,127 +6,13 @@
  * when Supabase is not configured or returns errors.
  */
 
-import type { Brand, Order, OrderItem, Review, Sneaker } from "@/types";
+import type { Order, OrderItem, Product, Review } from "@/types";
+import {
+  BRANDS,
+  getBrandName as getBrandNameFromRegistry,
+} from "@/constants/brands";
 
-export const mockBrands: (Brand & { thumb?: string | null })[] = [
-  {
-    id: "brand-1",
-    name: "Nike",
-    thumb: "https://cdn.simpleicons.org/nike/111111",
-  },
-  {
-    id: "brand-2",
-    name: "Adidas",
-    thumb: "https://cdn.simpleicons.org/adidas/111111",
-  },
-  {
-    id: "brand-3",
-    name: "New Balance",
-    thumb: "https://cdn.simpleicons.org/newbalance/111111",
-  },
-  {
-    id: "brand-4",
-    name: "ASICS",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2016/03/asics-1992-2006-logo-512x230.png",
-  },
-  {
-    id: "brand-5",
-    name: "Salomon",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2016/11/salomon_group_2012-2022-logo_brandlogos.net_bqdlb-512x323.png",
-  },
-  {
-    id: "brand-6",
-    name: "Converse",
-    thumb:
-      "https://www.liblogo.com/img-logo/sml/co380ce16-converse-all-star-logo-converse-all-star-logo-imagenes-para-estampar-camisetas.webp",
-  },
-  {
-    id: "brand-7",
-    name: "Vans",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/vans-logo-512x512.png",
-  },
-  {
-    id: "brand-8",
-    name: "Timberland",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/timberland-logo-512x512.png",
-  },
-  {
-    id: "brand-9",
-    name: "Dr. Martens",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/dr-martens-logo-512x512.png",
-  },
-  {
-    id: "brand-10",
-    name: "Puma",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/puma-logo-512x512.png",
-  },
-  {
-    id: "brand-11",
-    name: "Hoka",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/hoka-logo-512x512.png",
-  },
-  {
-    id: "brand-12",
-    name: "Reebok",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/reebok-logo-512x512.png",
-  },
-  {
-    id: "brand-13",
-    name: "Jordan",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/jordan-logo-512x512.png",
-  },
-  {
-    id: "brand-14",
-    name: "Balenciaga",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/balenciaga-logo-512x512.png",
-  },
-  {
-    id: "brand-15",
-    name: "Gucci",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/gucci-logo-512x512.png",
-  },
-  {
-    id: "brand-16",
-    name: "Louis Vuitton",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/louis-vuitton-logo-512x512.png",
-  },
-  {
-    id: "brand-17",
-    name: "Dior",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/dior-logo-512x512.png",
-  },
-  {
-    id: "brand-18",
-    name: "Prada",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/prada-logo-512x512.png",
-  },
-  {
-    id: "brand-19",
-    name: "Fendi",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/fendi-logo-512x512.png",
-  },
-  {
-    id: "brand-20",
-    name: "Off-White",
-    thumb:
-      "https://brandlogos.net/wp-content/uploads/2023/01/off-white-logo-512x512.png",
-  },
-];
+export const mockBrands = BRANDS;
 
 export const mockCategories: {
   id: string;
@@ -160,306 +46,306 @@ export const mockCategories: {
   },
 ];
 
-export const mockSneakers: Sneaker[] = [
+export const mockProducts: Product[] = [
   {
-    id: "sneaker-1",
-    brand_id: "brand-1",
+    id: "product-1",
+    brand_id: "nike",
     name: "Air Force 1 Low",
-    model: "AF1",
     description:
       "The iconic Nike Air Force 1 Low in pristine white leather. Features a clean upper with perforated detailing and a comfortable Air cushioned midsole.",
     price: 120000,
-    original_price: 180000,
-    size: 10,
-    condition: "new",
-    release_date: "2024-01-15",
-    image_url:
+    thumb:
       "https://unsplash.com/photos/green-and-black-nike-athletic-shoe-kP6knT7tjn4",
-    stock: 5,
-    status: "active",
+    available_colors: ["White", "Black", "Grey"],
+    available_sizes: [7, 8, 8.5, 9, 9.5, 10, 10.5, 11, 12],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "unisex",
     category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-01T10:00:00Z",
-    updated_at: "2024-06-01T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-2",
-    brand_id: "brand-2",
+    id: "product-2",
+    brand_id: "adidas",
     name: "Ultraboost 22",
-    model: "BBPB35",
     description:
       "Adidas Ultraboost 22 with Boost midsole for responsive energy return. Features a Primeknit upper and Torsion System for stability.",
     price: 145000,
-    original_price: 220000,
-    size: 9,
-    condition: "like_new",
-    release_date: "2024-03-20",
-    image_url:
+    thumb:
       "https://unsplash.com/photos/unpaired-off-white-x-nike-air-force-1-low-top-sneaker-PqbL_mxmaUE",
-    stock: 3,
-    status: "active",
+    available_colors: ["Black", "White", "Grey"],
+    available_sizes: [8, 8.5, 9, 9.5, 10, 11],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "running",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-05T10:00:00Z",
-    updated_at: "2024-06-05T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-3",
-    brand_id: "brand-3",
+    id: "product-3",
+    brand_id: "new_balance",
     name: "New Balance 550",
-    model: "M550",
     description:
       "New Balance 550 with classic suede and mesh upper. Features ENCAP midsole for cushioning and a durable outsole.",
     price: 85000,
-    original_price: 130000,
-    size: 11,
-    condition: "good",
-    release_date: "2023-11-10",
-    image_url:
+    thumb:
       "https://unsplash.com/photos/black-and-white-nike-athletic-shoes-s-gYAbQToXk",
-    stock: 7,
-    status: "active",
+    available_colors: ["White", "Grey"],
+    available_sizes: [7, 8, 9, 10, 11, 12],
+    cargo_fee: 3500,
+    shipment_days: 10,
+    sex: "unisex",
     category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-10T10:00:00Z",
-    updated_at: "2024-06-10T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-4",
-    brand_id: "brand-1",
+    id: "product-4",
+    brand_id: "jordan",
     name: "Air Jordan 1 Retro",
-    model: "AJ1",
     description:
       "Air Jordan 1 Retro in the iconic 'Chicago' colorway. Premium leather upper with Nike Air cushioning in the heel.",
     price: 280000,
-    original_price: 400000,
-    size: 10.5,
-    condition: "like_new",
-    release_date: "2024-05-01",
-    image_url:
+    thumb:
       "https://unsplash.com/photos/blue-and-black-nike-high-top-sneakers-BWPqHZBhMVA",
-    stock: 2,
-    status: "active",
+    available_colors: ["Red", "Black", "White"],
+    available_sizes: [8, 8.5, 9, 9.5, 10, 10.5, 11, 12],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "basketball",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-15T10:00:00Z",
-    updated_at: "2024-06-15T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-5",
-    brand_id: "brand-4",
+    id: "product-5",
+    brand_id: "puma",
     name: "RS-X Core",
-    model: "391377",
     description:
       "Puma RS-X Core with bold retro design. Features a thick midsole with visible Torsion System and breathable mesh upper.",
     price: 95000,
-    original_price: 140000,
-    size: 9.5,
-    condition: "new",
-    release_date: "2024-02-12",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1597044175934-8d4d6d4d6b5e?w=800&h=800&fit=crop",
-    stock: 4,
-    status: "active",
+    available_colors: ["Black", "White", "Grey"],
+    available_sizes: [8, 9, 10, 11],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-20T10:00:00Z",
-    updated_at: "2024-06-20T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-6",
-    brand_id: "brand-5",
+    id: "product-6",
+    brand_id: "vans",
     name: "Old Skool",
-    model: "VN000D0B",
     description:
       "Vans Old Skool in classic black and white. Canvas upper with signature Waffle outsole for grip and durability.",
     price: 55000,
-    original_price: 80000,
-    size: 8,
-    condition: "fair",
-    release_date: "2023-09-05",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800&h=800&fit=crop",
-    stock: 10,
-    status: "active",
-    category: "skate",
+    available_colors: ["Black", "White"],
+    available_sizes: [7, 8, 9, 10, 11, 12],
+    cargo_fee: 3500,
+    shipment_days: 10,
+    sex: "unisex",
+    category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-25T10:00:00Z",
-    updated_at: "2024-06-25T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-7",
-    brand_id: "brand-1",
+    id: "product-7",
+    brand_id: "nike",
     name: "Air Max 90",
-    model: "AO4436",
     description:
       "Nike Air Max 90 with visible Air unit in the midsole. Features a synthetic upper with mesh panels for breathability.",
     price: 110000,
-    original_price: 160000,
-    size: 9,
-    condition: "good",
-    release_date: "2024-04-08",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1509107776819-8958f5a2ac6f?w=800&h=800&fit=crop",
-    stock: 0,
-    status: "sold_out",
+    available_colors: ["Grey", "Black"],
+    available_sizes: [8, 9, 10, 11],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "running",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-06-28T10:00:00Z",
-    updated_at: "2024-06-28T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-8",
-    brand_id: "brand-6",
+    id: "product-8",
+    brand_id: "converse",
     name: "Chuck Taylor All Star",
-    model: "A03654",
     description:
       "Converse Chuck Taylor All Star high-top in classic canvas. Iconic design with rubber toe cap and vulcanized sole.",
     price: 45000,
-    original_price: null,
-    size: 7,
-    condition: "new",
-    release_date: "2024-01-20",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1519559909489-57f5d5d3a6ec?w=800&h=800&fit=crop",
-    stock: 6,
-    status: "active",
+    available_colors: ["White", "Black", "Red"],
+    available_sizes: [6, 7, 8, 9, 10, 11],
+    cargo_fee: 3500,
+    shipment_days: 10,
+    sex: "unisex",
     category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-01T10:00:00Z",
-    updated_at: "2024-07-01T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-9",
-    brand_id: "brand-10",
+    id: "product-9",
+    brand_id: "puma",
     name: "RS-X Reinvention",
-    model: "374891-01",
     description:
       "Puma RS-X Reinvention with bold retro aesthetic. Features chunky midsole, leather and mesh upper with reflective detailing.",
     price: 135000,
-    original_price: 180000,
-    size: 9,
-    condition: "new",
-    release_date: "2024-03-15",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=800&h=800&fit=crop",
-    stock: 4,
-    status: "active",
+    available_colors: ["White", "Black"],
+    available_sizes: [8, 9, 10, 11],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "lifestyle",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-05T10:00:00Z",
-    updated_at: "2024-07-05T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-10",
-    brand_id: "brand-13",
+    id: "product-10",
+    brand_id: "jordan",
     name: "Air Jordan 4 Retro",
-    model: "DC9530-001",
     description:
       "Air Jordan 4 Retro in 'Military Black' colorway. Premium leather and mesh construction with iconic Air cushioning and visible Nike Air unit.",
     price: 450000,
-    original_price: 550000,
-    size: 10.5,
-    condition: "new",
-    release_date: "2024-06-15",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=800&h=800&fit=crop",
-    stock: 2,
-    status: "active",
+    available_colors: ["Black", "Grey", "White"],
+    available_sizes: [8, 9, 10, 11, 12],
+    cargo_fee: 3500,
+    shipment_days: 7,
+    sex: "male",
     category: "basketball",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-08T10:00:00Z",
-    updated_at: "2024-07-08T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-11",
-    brand_id: "brand-14",
+    id: "product-11",
+    brand_id: "balenciaga",
     name: "Triple S Sneaker",
-    model: "568593-W2SN1-9000",
     description:
       "Balenciaga Triple S in black and white. Features Triple S sole construction with leather, mesh and nubuck upper in a deconstructed aesthetic.",
     price: 1200000,
-    original_price: 1450000,
-    size: 42,
-    condition: "like_new",
-    release_date: "2024-02-01",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&h=800&fit=crop",
-    stock: 1,
-    status: "active",
+    available_colors: ["Black", "White"],
+    available_sizes: [40, 41, 42, 43, 44],
+    cargo_fee: 5000,
+    shipment_days: 10,
+    sex: "unisex",
     category: "luxury",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-10T10:00:00Z",
-    updated_at: "2024-07-10T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-12",
-    brand_id: "brand-15",
+    id: "product-12",
+    brand_id: "gucci",
     name: "Tennis 1977 Sneaker",
-    model: "606497-KK00F-1000",
     description:
       "Gucci Tennis 1977 in white leather with embossed Web detail. Features GG embossed leather sole and classic low-top silhouette.",
     price: 980000,
-    original_price: 1150000,
-    size: 41,
-    condition: "new",
-    release_date: "2024-04-20",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&h=800&fit=crop",
-    stock: 3,
-    status: "active",
+    available_colors: ["White", "Cream"],
+    available_sizes: [38, 39, 40, 41, 42],
+    cargo_fee: 5000,
+    shipment_days: 10,
+    sex: "female",
     category: "luxury",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-12T10:00:00Z",
-    updated_at: "2024-07-12T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-13",
-    brand_id: "brand-16",
+    id: "product-13",
+    brand_id: "louis_vuitton",
     name: "LV Trainer Sneaker",
-    model: "1A9U6T-1A9W5U",
     description:
       "Louis Vuitton LV Trainer in monogram canvas and leather. embroidered Monogram flowers and Louis Vuitton signature on the side.",
     price: 1650000,
-    original_price: 1950000,
-    size: 42,
-    condition: "like_new",
-    release_date: "2024-05-10",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1606171656699-ffea0f3ab2e4?w=800&h=800&fit=crop",
-    stock: 1,
-    status: "active",
+    available_colors: ["White", "Black"],
+    available_sizes: [39, 40, 41, 42, 43],
+    cargo_fee: 5000,
+    shipment_days: 12,
+    sex: "unisex",
     category: "luxury",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-14T10:00:00Z",
-    updated_at: "2024-07-14T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-14",
-    brand_id: "brand-17",
+    id: "product-14",
+    brand_id: "dior",
     name: "B23 High-Top Sneaker",
-    model: "3SN232ZYP-H038",
     description:
       "Dior B23 High-Top in Oblique canvas with technical mesh. Features Dior signature and CD diamond motif on the side and rubber sole.",
     price: 1450000,
-    original_price: 1700000,
-    size: 43,
-    condition: "new",
-    release_date: "2024-06-01",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1583241800698-e8ab018302a0?w=800&h=800&fit=crop",
-    stock: 2,
-    status: "active",
+    available_colors: ["Black", "White"],
+    available_sizes: [38, 39, 40, 41, 42, 43],
+    cargo_fee: 5000,
+    shipment_days: 12,
+    sex: "unisex",
     category: "luxury",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-15T10:00:00Z",
-    updated_at: "2024-07-15T10:00:00Z",
+    user_id: null,
   },
   {
-    id: "sneaker-15",
-    brand_id: "brand-18",
+    id: "product-15",
+    brand_id: "prada",
     name: "Prada America's Cup Sneaker",
-    model: "2EG320-066-F0002",
     description:
       "Prada America's Cup sneaker in brushed leather with Prada Linea Rossa triangle logo. Features technical fabric lining and rubber sole.",
     price: 1100000,
-    original_price: 1300000,
-    size: 42,
-    condition: "good",
-    release_date: "2024-03-25",
-    image_url:
+    thumb:
       "https://images.unsplash.com/photo-1539184441678-9b8158f1e582?w=800&h=800&fit=crop",
-    stock: 2,
-    status: "active",
+    available_colors: ["White", "Grey"],
+    available_sizes: [39, 40, 41, 42, 43],
+    cargo_fee: 5000,
+    shipment_days: 12,
+    sex: "male",
     category: "luxury",
+    location: "Ulaanbaatar",
+    is_available: true,
     created_at: "2024-07-16T10:00:00Z",
-    updated_at: "2024-07-16T10:00:00Z",
+    user_id: null,
   },
 ];
 
@@ -606,20 +492,19 @@ export function getReviewCount(sneakerId: string): number {
  */
 export function getBrandName(brandId: string | null | undefined): string {
   if (!brandId) return "Брэнд";
-  const brand = mockBrands.find((b) => b.id === brandId);
-  return brand?.name ?? "Брэнд";
+  return getBrandNameFromRegistry(brandId);
 }
 
 /**
- * Helper: get full sneaker with brand name and rating
+ * Helper: get product details with brand name and rating
  */
-export function getSneakerWithDetails(id: string) {
-  const sneaker = mockSneakers.find((s) => s.id === id);
-  if (!sneaker) return null;
+export function getProductWithDetails(id: string) {
+  const product = mockProducts.find((p) => p.id === id);
+  if (!product) return null;
   return {
-    ...sneaker,
-    brandName: sneaker.brand_id ? getBrandName(sneaker.brand_id) : "",
-    avgRating: getAverageRating(sneaker.id),
-    reviewCount: getReviewCount(sneaker.id),
+    ...product,
+    brandName: product.brand_id ? getBrandName(product.brand_id) : "",
+    avgRating: getAverageRating(id),
+    reviewCount: getReviewCount(id),
   };
 }

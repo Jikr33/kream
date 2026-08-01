@@ -6,9 +6,10 @@ import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import SneakerCard from "@/components/SneakerCard";
 import PremiumSelectorSection from "@/components/PremiumSelectorSection";
-import { mockBrands, mockCategories, mockSneakers } from "@/lib/mockData";
+import { mockCategories, mockProducts } from "@/lib/mockData";
 import { fetchProducts } from "@/supabase";
 import { Product } from "@/types";
+import { getBrandName, getBrandList } from "@/constants/brands";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 
 const SEARCH_BAR_HEIGHT = 46;
@@ -17,8 +18,10 @@ export default function ExploreScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>(mockSneakers as Product[]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
+  const [products, setProducts] = useState<Product[]>(mockProducts);
 
   useEffect(() => {
     async function loadProducts() {
@@ -36,7 +39,7 @@ export default function ExploreScreen() {
 
   const brandNameById = useMemo(() => {
     const map = new Map<string, string>();
-    mockBrands.forEach((b) => map.set(b.id, b.name));
+    getBrandList().forEach((b) => map.set(b.id, b.name));
     return map;
   }, []);
 
@@ -56,8 +59,7 @@ export default function ExploreScreen() {
         const searchable = [
           sneaker.name,
           brandNameById.get(sneaker.brand_id) || "",
-          sneaker.category,
-          sneaker.model || "",
+          sneaker.category || "",
         ]
           .filter(Boolean)
           .join(" ")
@@ -66,19 +68,25 @@ export default function ExploreScreen() {
       }
       return true;
     });
-  }, [products, selectedBrandId, selectedCategoryId, searchQuery, brandNameById]);
+  }, [
+    products,
+    selectedBrandId,
+    selectedCategoryId,
+    searchQuery,
+    brandNameById,
+  ]);
 
   const handleSneakerPress = useCallback(
     (id: string) => router.push(`/sneaker/${id}`),
-    [router]
+    [router],
   );
 
   const sectionTitle = useMemo(() => {
     if (selectedBrandId) {
-      return `${brandNameById.get(selectedBrandId) ?? "Brand"}`;
+      return getBrandName(selectedBrandId);
     }
     return "All Sneakers";
-  }, [selectedBrandId, brandNameById]);
+  }, [selectedBrandId]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -136,7 +144,6 @@ export default function ExploreScreen() {
                 <View key={sneaker.id} style={styles.gridItem}>
                   <SneakerCard
                     sneaker={sneaker}
-                    brandName={brandNameById.get(sneaker.brand_id) || ""}
                     onPress={() => handleSneakerPress(sneaker.id)}
                   />
                 </View>
