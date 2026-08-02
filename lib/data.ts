@@ -8,7 +8,6 @@
 
 import { supabase } from "@/supabase";
 import type {
-  Brand,
   Order,
   OrderItem,
   Product,
@@ -34,12 +33,7 @@ const isSupabaseConfigured =
 
 export async function fetchSneakers(): Promise<ProductWithDetails[]> {
   if (!isSupabaseConfigured) {
-    return mockProducts.map((p: Product) => ({
-      ...p,
-      brandName: getBrandName(p.brand_id),
-      avgRating: getAverageRating(p.id),
-      reviewCount: getReviewCount(p.id),
-    }));
+    return fallbackSneakers();
   }
   try {
     const { data, error } = await supabase
@@ -48,7 +42,7 @@ export async function fetchSneakers(): Promise<ProductWithDetails[]> {
       .eq("is_available", true)
       .order("created_at", { ascending: false });
     if (error || !data) return fallbackSneakers();
-    return (data as any[]).map((p) => ({
+    return (data as Product[]).map((p) => ({
       ...p,
       brandName: getBrandName(p.brand_id),
       avgRating: getAverageRating(p.id),
@@ -88,7 +82,7 @@ export async function fetchSneakerById(
       .eq("id", id)
       .single();
     if (error || !data) return null;
-    const result = data as any;
+    const result = data as Product;
     return {
       ...result,
       brandName: getBrandName(result.brand_id),
@@ -145,7 +139,7 @@ export async function fetchReviews(sneakerId: string): Promise<Review[]> {
       .eq("sneaker_id", sneakerId)
       .order("created_at", { ascending: false });
     if (error) return mockReviews.filter((r) => r.sneaker_id === sneakerId);
-    return data ?? [];
+    return (data as Review[]) ?? [];
   } catch {
     return mockReviews.filter((r) => r.sneaker_id === sneakerId);
   }
@@ -165,7 +159,7 @@ export async function fetchUserOrders(userId?: string): Promise<Order[]> {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (error) return mockOrders.filter((o) => o.user_id === userId);
-    return data ?? [];
+    return (data as Order[]) ?? [];
   } catch {
     return mockOrders.filter((o) => o.user_id === userId);
   }
@@ -200,14 +194,16 @@ export async function fetchOrderById(orderId: string): Promise<{
       .select("*, products(*)")
       .eq("order_id", orderId);
 
-    if (itemsError || !items) return { order, items: [] };
+    if (itemsError || !items) return { order: order as Order, items: [] };
 
     return {
-      order,
-      items: (items as any[]).map((i: any) => ({
-        ...i,
-        sneaker: i.products,
-      })),
+      order: order as Order,
+      items: (items as Array<OrderItem & { products: Product | null }>).map(
+        (i) => ({
+          ...i,
+          sneaker: i.products,
+        }),
+      ),
     };
   } catch {
     return null;
@@ -229,7 +225,7 @@ export async function createOrder(order: {
   }
 
   try {
-    const createResult = (await supabase
+    const { data: newOrder, error } = await supabase
       .from("orders")
       .insert({
         user_id: order.userId ?? null,
@@ -237,15 +233,13 @@ export async function createOrder(order: {
         payment_method: order.paymentMethod,
         shipping_address: order.shippingAddress,
         status: "pending",
-      } as any)
+      })
       .select()
-      .single()) as any;
+      .single();
 
-    const newOrder = createResult.data;
-    const error = createResult.error;
     if (error || !newOrder) return orderId;
 
-    const createdOrder = newOrder as any;
+    const createdOrder = newOrder as Order;
 
     // Insert order items
     const orderItems = order.items.map((item) => ({
@@ -255,9 +249,9 @@ export async function createOrder(order: {
       price: item.price,
     }));
 
-    await supabase.from("order_items").insert(orderItems as any);
+    await supabase.from("order_items").insert(orderItems);
 
-    return newOrder.id;
+    return createdOrder.id;
   } catch {
     return orderId;
   }

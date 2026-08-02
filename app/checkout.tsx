@@ -8,9 +8,8 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Animated,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 
@@ -26,7 +25,7 @@ import { ShippingMethod } from "@/components/PriceSummary";
 import AddressBottomSheet, {
   AddressData,
 } from "@/components/AddressBottomSheet";
-import { Colors, Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius } from "@/constants/theme";
 import {
   getGuestAddress,
   saveGuestAddress,
@@ -34,6 +33,7 @@ import {
   saveCart,
   clearCart,
   clearGuestAddress,
+  type CheckoutCart,
 } from "@/utils/storage";
 import { supabase } from "@/supabase";
 import { getBrandName } from "@/constants/brands";
@@ -54,8 +54,6 @@ export default function CheckoutScreen() {
   const [showAddressSheet, setShowAddressSheet] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  const { id } = useLocalSearchParams<{ id: string }>();
 
   // Order state with product options
   const [product, setProduct] = useState({
@@ -112,7 +110,6 @@ export default function CheckoutScreen() {
 
   // Mark as initialized after first load
   useEffect(() => {
-    console.log(id, "checkout!!!!");
     if (!isInitialized && address && brandName) {
       setIsInitialized(true);
     }
@@ -128,11 +125,12 @@ export default function CheckoutScreen() {
 
       // Load cart
       const savedCart = await getCart();
-      if (savedCart) {
-        if (savedCart.product) setProduct(savedCart.product);
-        if (savedCart.variant) setVariant(savedCart.variant);
-        if (savedCart.shippingMethod)
-          setShippingMethod(savedCart.shippingMethod);
+      if (savedCart && "product" in savedCart) {
+        const checkoutCart = savedCart as CheckoutCart;
+        if (checkoutCart.product) setProduct(checkoutCart.product);
+        if (checkoutCart.variant) setVariant(checkoutCart.variant);
+        if (checkoutCart.shippingMethod)
+          setShippingMethod(checkoutCart.shippingMethod);
       }
 
       // Check if user is logged in
@@ -240,32 +238,6 @@ export default function CheckoutScreen() {
 
     setIsLoading(true);
     try {
-      // Create order in Supabase
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      const orderData = {
-        user_id: session?.user?.id || null,
-        sneaker_id: product.brand_id + "-" + product.name,
-        quantity: variant.quantity,
-        size: variant.size,
-        color: variant.color,
-        total_amount: total,
-        shipping_method: shippingMethod,
-        shipping_address: address,
-        payment_method: selectedPayment,
-        status: "pending",
-        created_at: new Date().toISOString(),
-      };
-
-      // In real app, insert to Supabase
-      // const { data: order, error } = await supabase
-      //   .from("orders")
-      //   .insert([orderData as any])
-      //   .select()
-      //   .single();
-
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -282,16 +254,7 @@ export default function CheckoutScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    address,
-    product,
-    variant,
-    shippingMethod,
-    selectedPayment,
-    total,
-    userEmail,
-    router,
-  ]);
+  }, [address, userEmail, router]);
 
   return (
     <SafeAreaView style={styles.container}>

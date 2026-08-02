@@ -20,7 +20,7 @@ export type Product = {
   name: string;
   description: string;
   price: number;
-  thumb: string;
+  thumb: string | null;
   available_colors: string[] | null;
   available_sizes: number[] | null;
   cargo_fee: number;

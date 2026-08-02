@@ -1,7 +1,7 @@
-import React, { memo, useState } from "react";
+import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius, Shadows } from "@/constants/theme";
+import { BorderRadius, Shadows } from "@/constants/theme";
 import * as Haptics from "expo-haptics";
 
 export type ShippingMethod = "standard" | "express";

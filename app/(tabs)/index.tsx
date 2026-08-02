@@ -1,15 +1,24 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { View, Text, ScrollView, StyleSheet, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  Animated,
+  Easing,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import SneakerCard from "@/components/SneakerCard";
 import PremiumSelectorSection from "@/components/PremiumSelectorSection";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { mockProducts } from "@/lib/mockData";
 import { useRouter } from "expo-router";
 import { fetchProducts } from "@/supabase";
 import type { Product } from "@/types";
 import { getBrandName, getBrandList } from "@/constants/brands";
-import { Colors, Typography, Spacing } from "@/constants/theme";
+import { Colors } from "@/constants/theme";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -18,7 +27,11 @@ export default function HomeScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
+  // Fade for content
+  const contentOpacity = React.useRef(new Animated.Value(0)).current;
 
   const brandNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -26,18 +39,43 @@ export default function HomeScreen() {
     return map;
   }, []);
 
+  // Initial product fetch with minimum loading duration to avoid flicker.
   useEffect(() => {
+    let mounted = true;
+    const startedAt = Date.now();
+    const MIN_LOADING_MS = 200;
+
     async function loadProducts() {
       try {
         const { allProducts, error } = await fetchProducts();
-        if (!error && allProducts && allProducts.length > 0) {
+        if (!error && allProducts && allProducts.length > 0 && mounted) {
           setProducts(allProducts);
         }
       } catch (error) {
         console.error("Failed to load products:", error);
+      } finally {
+        if (mounted) {
+          const elapsed = Date.now() - startedAt;
+          const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+          setTimeout(() => {
+            if (mounted) {
+              setIsLoading(false);
+              // Fade content in
+              Animated.timing(contentOpacity, {
+                toValue: 1,
+                duration: 220,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+              }).start();
+            }
+          }, remaining);
+        }
       }
     }
     loadProducts();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const trendingSneakers = useMemo(() => products.slice(0, 6), [products]);
@@ -109,67 +147,75 @@ export default function HomeScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-        snapToInterval={172}>
+        scrollEventThrottle={16}>
         {/* Trending - Hero */}
-        <View style={styles.trendingSection}>
-          <Text style={styles.trendingTitle}>Trending</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trendingContent}
-            decelerationRate="fast"
-            snapToInterval={172}>
-            {trendingSneakers.map((product) => (
-              <View key={product.id} style={styles.trendingItem}>
-                <SneakerCard
-                  sneaker={product}
-                  onPress={() => handleSneakerPress(product.id)}
-                  compact
-                />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Filters - Compact */}
-        <View style={styles.filters}>
-          <PremiumSelectorSection
-            type="brand"
-            selectedId={selectedBrandId}
-            onSelect={setSelectedBrandId}
-            showTitle
-          />
-          <PremiumSelectorSection
-            type="category"
-            selectedId={selectedCategoryId}
-            onSelect={setSelectedCategoryId}
-            showTitle={false}
-          />
-        </View>
-
-        {/* All Sneakers */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-
-          {filteredSneakers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No results found</Text>
-            </View>
-          ) : (
-            <View style={styles.grid}>
-              {filteredSneakers.map((product) => (
-                <View key={product.id} style={styles.gridItem}>
+        <Animated.View style={{ opacity: contentOpacity }}>
+          <View style={styles.trendingSection}>
+            <Text style={styles.trendingTitle}>Trending</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.trendingContent}
+              decelerationRate="fast">
+              {trendingSneakers.map((product) => (
+                <View key={product.id} style={styles.trendingItem}>
                   <SneakerCard
                     sneaker={product}
                     onPress={() => handleSneakerPress(product.id)}
                   />
                 </View>
               ))}
-            </View>
-          )}
-        </View>
+            </ScrollView>
+          </View>
+
+          {/* Filters - Compact */}
+          <View style={styles.filters}>
+            <PremiumSelectorSection
+              type="brand"
+              selectedId={selectedBrandId}
+              onSelect={setSelectedBrandId}
+              showTitle
+            />
+            <PremiumSelectorSection
+              type="category"
+              selectedId={selectedCategoryId}
+              onSelect={setSelectedCategoryId}
+              showTitle={false}
+            />
+          </View>
+
+          {/* All Sneakers */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+
+            {filteredSneakers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No results found</Text>
+              </View>
+            ) : (
+              <View style={styles.grid}>
+                {filteredSneakers.map((product) => (
+                  <View key={product.id} style={styles.gridItem}>
+                    <SneakerCard
+                      sneaker={product}
+                      onPress={() => handleSneakerPress(product.id)}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </Animated.View>
       </ScrollView>
+
+      {/* Global loading overlay — covers initial fetch, filtering, search */}
+      <LoadingOverlay
+        visible={isLoading}
+        fullscreen
+        size={50}
+        color="#111111"
+        minDurationMs={200}
+      />
     </SafeAreaView>
   );
 }

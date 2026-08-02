@@ -1,5 +1,11 @@
 import React, { memo, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  PressableProps,
+} from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
@@ -8,9 +14,13 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
+type AnimatedPressableProps = PressableProps & {
+  style?: ReturnType<typeof useAnimatedStyle>;
+};
+
 const AnimatedPressable = Animated.createAnimatedComponent(
-  Pressable as React.ComponentType<any>,
-);
+  Pressable,
+) as React.ComponentType<AnimatedPressableProps>;
 
 import { Colors } from "@/constants/theme";
 

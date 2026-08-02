@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius } from "@/constants/theme";
+import { BorderRadius } from "@/constants/theme";
 
 type PaymentMethod = {
   id: string;
@@ -50,21 +50,24 @@ const PaymentMethodRow = memo(function PaymentMethodRow({
       </Text>
 
       {/* Checkmark */}
-      {isSelected && (
-        <MaterialIcons name="check" size={20} color="#111111" />
-      )}
+      {isSelected && <MaterialIcons name="check" size={20} color="#111111" />}
     </TouchableOpacity>
   );
 });
 
-function getIconName(id: string): string {
-  const iconMap: Record<string, string> = {
+function getIconName(
+  id: string,
+): React.ComponentProps<typeof MaterialIcons>["name"] {
+  const iconMap: Record<
+    string,
+    React.ComponentProps<typeof MaterialIcons>["name"]
+  > = {
     "credit-card": "credit-card",
-    "kakaopay": "payment",
-    "toss": "payments",
+    kakaopay: "payment",
+    toss: "payments",
     "bank-transfer": "account-balance",
     "apple-pay": "apple",
-    "google-pay": "google",
+    "google-pay": "payment",
   };
   return iconMap[id] || "payment";
 }
