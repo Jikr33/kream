@@ -1,4 +1,20 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+/**
+ * Checkout Screen
+ * 
+ * Handles the checkout flow:
+ * 1. Display order summary
+ * 2. Collect shipping address
+ * 3. Select shipping method
+ * 4. Create order (pending_payment status)
+ * 5. Navigate to payment screen
+ * 
+ * IMPORTANT:
+ * - This screen ONLY creates the order
+ * - Payment is handled by the payment screen
+ * - Order status is updated by the webhook
+ */
+
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +24,10 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+<<<<<<< HEAD
+=======
+  Alert,
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -37,8 +57,12 @@ import {
 } from "@/utils/storage";
 import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
+<<<<<<< HEAD
 import { createOrder } from "@/services/orders";
 import { createPaymentSession } from "@/services/payment";
+=======
+import { createOrder, OrderError } from "@/services/orders";
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
 
 type ProductVariant = {
   size: string;
@@ -72,9 +96,16 @@ export default function CheckoutScreen() {
   // Order state with product options
   const [product, setProduct] = useState({
     brand_id: "nike",
+<<<<<<< HEAD
     name: params.productName || "Air Force 1 Low",
     price: params.price ? Number(params.price) : 120000,
     thumb: params.imageUrl || null,
+=======
+    name: "Air Force 1 Low",
+    price: 120000,
+    thumb: null as string | null,
+    id: "default-product",
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
   });
 
   const [variant, setVariant] = useState<ProductVariant>({
@@ -93,6 +124,9 @@ export default function CheckoutScreen() {
   const [address, setAddress] = useState<AddressData | null>(null);
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("standard");
+
+  // Ref to prevent double submission
+  const isSubmitting = useRef(false);
 
   // Shipping fees
   const standardShippingFee = 3500;
@@ -150,7 +184,6 @@ export default function CheckoutScreen() {
       }
 
       // Check if user is logged in
-      // TODO: Replace with actual Supabase auth check
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -241,19 +274,31 @@ export default function CheckoutScreen() {
   };
 
   const handleCheckout = useCallback(async () => {
+    // Prevent double submission
+    if (isSubmitting.current || isLoading) {
+      return;
+    }
+
+    // Validate address
     if (!address) {
       setShowAddressSheet(true);
       return;
     }
 
     if (!userEmail && !address.email) {
-      alert("Please provide an email address for order confirmation.");
+      Alert.alert(
+        "Email Required",
+        "Please provide an email address for order confirmation."
+      );
       setShowAddressSheet(true);
       return;
     }
 
+    isSubmitting.current = true;
     setIsLoading(true);
+
     try {
+<<<<<<< HEAD
       // Create order first
       const orderId = await createOrder({
         user_id: null, // TODO: replace with actual user ID
@@ -301,21 +346,67 @@ export default function CheckoutScreen() {
         pathname: "/payment/[orderId]",
         params: { orderId },
       });
+=======
+      // Get user session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
+
+      // Create order with pending_payment status
+      const order = await createOrder({
+        userId,
+        product: {
+          id: product.id || `${product.brand_id}-${product.name}`,
+          brandId: product.brand_id,
+          name: product.name,
+          price: product.price,
+          size: variant.size,
+          color: variant.color,
+          quantity: variant.quantity,
+          imageUrl: product.thumb,
+        },
+        shipping: {
+          method: shippingMethod,
+        },
+        address,
+      });
+
+      // Clear cart after creating order
+      await clearCart();
+      await clearGuestAddress();
+
+      // Navigate to payment screen with order ID
+      router.push(`/payment?orderId=${order.id}`);
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
     } catch (error) {
-      console.error("[Checkout] Payment failed:", error);
-      alert("Payment failed. Please try again.");
+      console.error("[Checkout] Order creation failed:", error);
+
+      if (error instanceof OrderError) {
+        Alert.alert("Error", error.message);
+      } else {
+        Alert.alert("Error", "Failed to create order. Please try again.");
+      }
     } finally {
       setIsLoading(false);
+      // Reset double-submit prevention after a delay
+      setTimeout(() => {
+        isSubmitting.current = false;
+      }, 1000);
     }
   }, [
     address,
     userEmail,
     router,
+<<<<<<< HEAD
     product,
     variant,
     shippingFee,
     total,
     selectedPayment,
+=======
+    isLoading,
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
   ]);
 
   return (
@@ -412,7 +503,7 @@ export default function CheckoutScreen() {
           amount={total}
           onPress={handleCheckout}
           loading={isLoading}
-          disabled={!address}
+          disabled={!address || isLoading}
         />
 
         {/* Address Bottom Sheet */}
