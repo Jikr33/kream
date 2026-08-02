@@ -120,11 +120,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.card,
     borderRadius: CARD_RADIUS,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   cardInner: {
     height: CARD_HEIGHT,
@@ -139,6 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.backgroundSecondary,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 0,
   },
   image: {
     width: "100%",

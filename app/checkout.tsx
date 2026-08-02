@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
 
@@ -35,8 +35,10 @@ import {
   clearGuestAddress,
   type CheckoutCart,
 } from "@/utils/storage";
-import { supabase } from "@/supabase";
+import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
+import { createOrder } from "@/services/orders";
+import { createPaymentSession } from "@/services/payment";
 
 type ProductVariant = {
   size: string;
@@ -49,23 +51,35 @@ type ProductVariant = {
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    id?: string;
+    productName?: string;
+    selectedSize?: string;
+    selectedColor?: string;
+    imageUrl?: string;
+    price?: string;
+  }>();
+
   const [selectedPayment, setSelectedPayment] = useState<string>("credit-card");
   const [isLoading, setIsLoading] = useState(false);
   const [showAddressSheet, setShowAddressSheet] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // If params are provided (from product page), use them directly
+  const hasParams = !!(params.id && params.productName && params.price);
+
   // Order state with product options
   const [product, setProduct] = useState({
     brand_id: "nike",
-    name: "Air Force 1 Low",
-    price: 120000,
-    thumb: null as string | null,
+    name: params.productName || "Air Force 1 Low",
+    price: params.price ? Number(params.price) : 120000,
+    thumb: params.imageUrl || null,
   });
 
   const [variant, setVariant] = useState<ProductVariant>({
-    size: "10",
-    color: "Default",
+    size: params.selectedSize || "10",
+    color: params.selectedColor || "Default",
     quantity: 1,
     availableSizes: ["7", "8", "8.5", "9", "9.5", "10", "10.5", "11", "12"],
     availableColors: [
@@ -103,10 +117,12 @@ export default function CheckoutScreen() {
   const productName = product.name;
   const imageUrl = product.thumb;
 
-  // Load saved data on mount
+  // Load saved data on mount only if params were NOT provided
   useEffect(() => {
-    loadSavedData();
-  }, []);
+    if (!hasParams) {
+      loadSavedData();
+    }
+  }, [hasParams]);
 
   // Mark as initialized after first load
   useEffect(() => {
@@ -238,23 +254,69 @@ export default function CheckoutScreen() {
 
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Create order first
+      const orderId = await createOrder({
+        user_id: null, // TODO: replace with actual user ID
+        product_id: product.brand_id, // Using brand_id as product_id for demo
+        product_name: product.name,
+        product_image: product.thumb,
+        selected_size: variant.size,
+        selected_color: variant.color,
+        quantity: variant.quantity,
+        subtotal: product.price * variant.quantity,
+        shipping_fee: shippingFee,
+        total: total,
+        currency: "MNT",
+        shipping_name: address.recipientName,
+        shipping_phone: address.phoneNumber,
+        shipping_email: address.email,
+        shipping_address: address.streetAddress,
+        shipping_city: address.city,
+        shipping_district: address.district,
+        shipping_postal: address.postalCode,
+        payment_provider: "wire",
+        payment_method: selectedPayment,
+      });
 
-      // Clear cart after successful order
-      await clearCart();
-      await clearGuestAddress();
+      if (!orderId) {
+        throw new Error("Failed to create order");
+      }
 
-      // Show success and navigate
-      alert("Payment successful! Order placed successfully.");
-      router.push("/(tabs)/profile");
+      // Create Wire payment session
+      const paymentResult = await createPaymentSession(
+        orderId,
+        address.email,
+        address.recipientName,
+        total,
+      );
+
+      if (!paymentResult.success) {
+        throw new Error(
+          paymentResult.error || "Failed to create payment session",
+        );
+      }
+
+      // Navigate to payment screen
+      router.push({
+        pathname: "/payment/[orderId]",
+        params: { orderId },
+      });
     } catch (error) {
       console.error("[Checkout] Payment failed:", error);
       alert("Payment failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [address, userEmail, router]);
+  }, [
+    address,
+    userEmail,
+    router,
+    product,
+    variant,
+    shippingFee,
+    total,
+    selectedPayment,
+  ]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -266,12 +328,10 @@ export default function CheckoutScreen() {
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <MaterialIcons name="arrow-back-ios" size={20} color="#111111" />
           </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Checkout</Text>
-            <View style={styles.headerSubtitleRow}>
-              <MaterialIcons name="lock" size={10} color="#9CA3AF" />
-              <Text style={styles.headerSubtitle}>Secure Checkout</Text>
-            </View>
+          <Text style={styles.headerTitle}>Checkout</Text>
+          <View style={styles.headerRight}>
+            <MaterialIcons name="lock" size={12} color="#9CA3AF" />
+            <Text style={styles.headerSubtitle}>Secure Checkout</Text>
           </View>
         </View>
 
@@ -384,7 +444,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAF8",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#ECECEC",
-    minHeight: 52,
+    minHeight: 44,
   },
   backButton: {
     width: 36,
@@ -392,21 +452,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  headerCenter: {
-    flex: 1,
-    marginLeft: 8,
-  },
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: "#111111",
     letterSpacing: 0.2,
+    flex: 1,
+    textAlign: "center",
   },
-  headerSubtitleRow: {
+  headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 1,
+    minWidth: 100,
+    justifyContent: "flex-end",
   },
   headerSubtitle: {
     fontSize: 11,

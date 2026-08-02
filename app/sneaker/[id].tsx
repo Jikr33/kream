@@ -19,7 +19,7 @@ import StarRating from "@/components/StarRating";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 import { saveCart, getCart, type Cart, type CartItem } from "@/utils/storage";
-import { fetchDetail } from "@/supabase";
+import { fetchProductById } from "@/services/products";
 import type { ProductWithDetails } from "@/types";
 
 export default function SneakerDetailScreen() {
@@ -51,9 +51,8 @@ export default function SneakerDetailScreen() {
     async function loadDetail() {
       try {
         // Try Supabase first
-        const { detail, error } = await fetchDetail(id);
-        if (!error && detail && detail.length > 0 && mounted) {
-          const product = detail[0] as ProductWithDetails;
+        const product = await fetchProductById(id);
+        if (product && mounted) {
           setSneaker(product);
           setAvailableSizes(product.available_sizes ?? []);
           setAvailableColors(product.available_colors ?? []);
@@ -173,9 +172,16 @@ export default function SneakerDetailScreen() {
     if (!sneaker) return;
     router.push({
       pathname: "/checkout",
-      params: { id: sneaker.id },
+      params: {
+        id: sneaker.id,
+        productName: sneaker.name,
+        selectedSize: String(selectedSize),
+        selectedColor,
+        imageUrl: sneaker.thumb || "",
+        price: String(sneaker.price),
+      },
     });
-  }, [router, sneaker]);
+  }, [router, sneaker, selectedSize, selectedColor]);
 
   const handleSizeSelect = useCallback((size: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

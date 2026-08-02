@@ -15,8 +15,8 @@ import PremiumSelectorSection from "@/components/PremiumSelectorSection";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { mockProducts } from "@/lib/mockData";
 import { useRouter } from "expo-router";
-import { fetchProducts } from "@/supabase";
-import type { Product } from "@/types";
+import { fetchProducts } from "@/services/products";
+import type { ProductWithDetails, Product } from "@/types";
 import { getBrandName, getBrandList } from "@/constants/brands";
 import { Colors } from "@/constants/theme";
 
@@ -47,9 +47,9 @@ export default function HomeScreen() {
 
     async function loadProducts() {
       try {
-        const { allProducts, error } = await fetchProducts();
-        if (!error && allProducts && allProducts.length > 0 && mounted) {
-          setProducts(allProducts);
+        const products = await fetchProducts();
+        if (products && products.length > 0 && mounted) {
+          setProducts(products);
         }
       } catch (error) {
         console.error("Failed to load products:", error);
@@ -149,63 +149,62 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         scrollEventThrottle={16}>
         {/* Trending - Hero */}
-        <Animated.View style={{ opacity: contentOpacity }}>
-          <View style={styles.trendingSection}>
-            <Text style={styles.trendingTitle}>Trending</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trendingContent}
-              decelerationRate="fast">
-              {trendingSneakers.map((product) => (
-                <View key={product.id} style={styles.trendingItem}>
+        <View style={styles.trendingSection}>
+          <Text style={styles.trendingTitle}>Trending</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.trendingContent}
+            decelerationRate="fast"
+            scrollEventThrottle={16}>
+            {trendingSneakers.map((product) => (
+              <View key={product.id} style={styles.trendingItem}>
+                <SneakerCard
+                  sneaker={product}
+                  onPress={() => handleSneakerPress(product.id)}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Filters - Compact */}
+        <View style={styles.filters}>
+          <PremiumSelectorSection
+            type="brand"
+            selectedId={selectedBrandId}
+            onSelect={setSelectedBrandId}
+            showTitle
+          />
+          <PremiumSelectorSection
+            type="category"
+            selectedId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+            showTitle={false}
+          />
+        </View>
+
+        {/* All Sneakers */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+
+          {filteredSneakers.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No results found</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {filteredSneakers.map((product) => (
+                <View key={product.id} style={styles.gridItem}>
                   <SneakerCard
                     sneaker={product}
                     onPress={() => handleSneakerPress(product.id)}
                   />
                 </View>
               ))}
-            </ScrollView>
-          </View>
-
-          {/* Filters - Compact */}
-          <View style={styles.filters}>
-            <PremiumSelectorSection
-              type="brand"
-              selectedId={selectedBrandId}
-              onSelect={setSelectedBrandId}
-              showTitle
-            />
-            <PremiumSelectorSection
-              type="category"
-              selectedId={selectedCategoryId}
-              onSelect={setSelectedCategoryId}
-              showTitle={false}
-            />
-          </View>
-
-          {/* All Sneakers */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-
-            {filteredSneakers.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No results found</Text>
-              </View>
-            ) : (
-              <View style={styles.grid}>
-                {filteredSneakers.map((product) => (
-                  <View key={product.id} style={styles.gridItem}>
-                    <SneakerCard
-                      sneaker={product}
-                      onPress={() => handleSneakerPress(product.id)}
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </Animated.View>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* Global loading overlay — covers initial fetch, filtering, search */}

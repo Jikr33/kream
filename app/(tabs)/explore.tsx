@@ -16,8 +16,8 @@ import SneakerCard from "@/components/SneakerCard";
 import PremiumSelectorSection from "@/components/PremiumSelectorSection";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { mockProducts } from "@/lib/mockData";
-import { fetchProducts } from "@/supabase";
-import type { Product } from "@/types";
+import { fetchProducts } from "@/services/products";
+import type { ProductWithDetails, Product } from "@/types";
 import { getBrandName, getBrandList } from "@/constants/brands";
 import { Colors, Typography, Spacing } from "@/constants/theme";
 
@@ -40,9 +40,9 @@ export default function ExploreScreen() {
 
     async function loadProducts() {
       try {
-        const { allProducts, error } = await fetchProducts();
-        if (!error && allProducts && allProducts.length > 0 && mounted) {
-          setProducts(allProducts);
+        const products = await fetchProducts();
+        if (products && products.length > 0 && mounted) {
+          setProducts(products);
         }
       } catch (error) {
         console.error("Failed to load products:", error);
@@ -148,45 +148,43 @@ export default function ExploreScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         scrollEventThrottle={16}>
-        <Animated.View style={{ opacity: contentOpacity }}>
-          {/* Brands */}
-          <PremiumSelectorSection
-            type="brand"
-            selectedId={selectedBrandId}
-            onSelect={setSelectedBrandId}
-            showTitle={false}
-          />
+        {/* Brands */}
+        <PremiumSelectorSection
+          type="brand"
+          selectedId={selectedBrandId}
+          onSelect={setSelectedBrandId}
+          showTitle={false}
+        />
 
-          {/* Categories */}
-          <PremiumSelectorSection
-            type="category"
-            selectedId={selectedCategoryId}
-            onSelect={setSelectedCategoryId}
-            showTitle={false}
-          />
+        {/* Categories */}
+        <PremiumSelectorSection
+          type="category"
+          selectedId={selectedCategoryId}
+          onSelect={setSelectedCategoryId}
+          showTitle={false}
+        />
 
-          {/* Products */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+        {/* Products */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{sectionTitle}</Text>
 
-            {filteredSneakers.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No results found</Text>
-              </View>
-            ) : (
-              <View style={styles.grid}>
-                {filteredSneakers.map((sneaker) => (
-                  <View key={sneaker.id} style={styles.gridItem}>
-                    <SneakerCard
-                      sneaker={sneaker}
-                      onPress={() => handleSneakerPress(sneaker.id)}
-                    />
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </Animated.View>
+          {filteredSneakers.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No results found</Text>
+            </View>
+          ) : (
+            <View style={styles.grid}>
+              {filteredSneakers.map((sneaker) => (
+                <View key={sneaker.id} style={styles.gridItem}>
+                  <SneakerCard
+                    sneaker={sneaker}
+                    onPress={() => handleSneakerPress(sneaker.id)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* Global loading overlay */}
