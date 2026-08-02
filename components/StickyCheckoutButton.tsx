@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Colors } from "@/constants/theme";
 
 type StickyCheckoutButtonProps = {
   amount: number;
@@ -39,12 +40,15 @@ const StickyCheckoutButton = memo(function StickyCheckoutButton({
     }).start();
   };
 
+  const backgroundColor = loading
+    ? "#D1D5DB"
+    : disabled
+      ? "#D1D5DB"
+      : Colors.light.text;
+
   return (
     <Animated.View
-      style={[
-        styles.container,
-        { transform: [{ scale: scaleAnim }] },
-      ]}>
+      style={[styles.container, { transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity
         style={[styles.button, disabled && styles.buttonDisabled]}
         onPress={onPress}

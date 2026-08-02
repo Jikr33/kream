@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, ScrollView, StyleSheet, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  Animated,
+  Easing,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import SneakerCard from "@/components/SneakerCard";
 import PremiumSelectorSection from "@/components/PremiumSelectorSection";
-import { mockCategories, mockProducts } from "@/lib/mockData";
-import { fetchProducts } from "@/supabase";
-import { Product } from "@/types";
+import LoadingOverlay from "@/components/LoadingOverlay";
+import { mockProducts } from "@/lib/mockData";
+import { fetchProducts } from "@/services/products";
+import type { ProductWithDetails, Product } from "@/types";
 import { getBrandName, getBrandList } from "@/constants/brands";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
-
-const SEARCH_BAR_HEIGHT = 46;
+import { Colors, Typography, Spacing } from "@/constants/theme";
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -22,19 +29,45 @@ export default function ExploreScreen() {
     null,
   );
   const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const contentOpacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let mounted = true;
+    const startedAt = Date.now();
+    const MIN_LOADING_MS = 200;
+
     async function loadProducts() {
       try {
-        const { allProducts, error } = await fetchProducts();
-        if (!error && allProducts && allProducts.length > 0) {
-          setProducts(allProducts);
+        const products = await fetchProducts();
+        if (products && products.length > 0 && mounted) {
+          setProducts(products);
         }
       } catch (error) {
         console.error("Failed to load products:", error);
+      } finally {
+        if (mounted) {
+          const elapsed = Date.now() - startedAt;
+          const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+          setTimeout(() => {
+            if (mounted) {
+              setIsLoading(false);
+              Animated.timing(contentOpacity, {
+                toValue: 1,
+                duration: 220,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+              }).start();
+            }
+          }, remaining);
+        }
       }
     }
     loadProducts();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const brandNameById = useMemo(() => {
@@ -113,7 +146,8 @@ export default function ExploreScreen() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={styles.scrollContent}
+        scrollEventThrottle={16}>
         {/* Brands */}
         <PremiumSelectorSection
           type="brand"
@@ -152,6 +186,15 @@ export default function ExploreScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Global loading overlay */}
+      <LoadingOverlay
+        visible={isLoading}
+        fullscreen
+        size={50}
+        color="#111111"
+        minDurationMs={200}
+      />
     </SafeAreaView>
   );
 }

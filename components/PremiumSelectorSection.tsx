@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, FlatList } from "react-native";
 import PremiumSelectorCard from "./PremiumSelectorCard";
 import { mockCategories } from "@/lib/mockData";
 import { getBrandList } from "@/constants/brands";
-import { Colors, Spacing, Typography } from "@/constants/theme";
+import { Colors, Spacing } from "@/constants/theme";
 
 type SelectorType = "brand" | "category";
 
@@ -29,7 +29,6 @@ export default function PremiumSelectorSection({
   onSelect,
   showTitle = true,
 }: PremiumSelectorSectionProps) {
-  const isAllSelected = selectedId === null;
   const isBrand = type === "brand";
 
   const handlePress = useCallback(
@@ -71,7 +70,6 @@ export default function PremiumSelectorSection({
 
   const title = isBrand ? "Brands" : "Categories";
   const data = isBrand ? getBrandList() : mockCategories;
-  const initialNumToRender = isBrand ? 10 : 5;
 
   return (
     <View style={[styles.section, isBrand && styles.brandSection]}>
@@ -81,7 +79,7 @@ export default function PremiumSelectorSection({
         </Text>
       )}
       <FlatList
-        data={isBrand ? data : data}
+        data={data}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         horizontal

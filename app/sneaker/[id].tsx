@@ -1,69 +1,113 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
-  Animated,
   Share,
+  Animated,
+  Easing,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 
 import { getProductWithDetails, mockReviews } from "@/lib/mockData";
 import StarRating from "@/components/StarRating";
+import LoadingOverlay from "@/components/LoadingOverlay";
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
-import { saveCart, getCart } from "@/utils/storage";
-import { fetchColorSize, fetchDetail } from "@/supabase";
-import type { Product, ProductWithDetails } from "@/types";
-
-type CartItem = {
-  id: string;
-  sneakerId: string;
-  name: string;
-  brand: string;
-  price: number;
-  thumb: string | null;
-  size: number;
-  color: string;
-  quantity: number;
-};
+import { saveCart, getCart, type Cart, type CartItem } from "@/utils/storage";
+import { fetchProductById } from "@/services/products";
+import type { ProductWithDetails } from "@/types";
 
 export default function SneakerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
   const [sneaker, setSneaker] = useState<ProductWithDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const [isFavorite, setIsFavorite] = useState(false);
-  const [selectedSize, setSelectedSize] = useState<number>(
-    sneaker?.available_sizes?.[0] || 10,
-  );
+  const [selectedSize, setSelectedSize] = useState<number>(10);
   const [selectedColor, setSelectedColor] = useState<string>("Default");
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<number[]>([]);
   const [availableColors, setAvailableColors] = useState<string[]>([]);
 
+  // Page fade-in
+  const pageOpacity = useRef(new Animated.Value(0)).current;
+
+  // Load product details with mock fallback and minimum loading duration.
   useEffect(() => {
-    async function loadColorSizes() {
+    if (!id) return;
+    let mounted = true;
+    const startedAt = Date.now();
+    const MIN_LOADING_MS = 250;
+
+    async function loadDetail() {
       try {
-        const { detail, error } = await fetchDetail(id);
-        if (!error && detail && detail.length > 0) {
-          // Use available_sizes from product if Supabase doesn't return data
-          setAvailableSizes(sneaker?.available_sizes || []);
-          setAvailableColors(sneaker?.available_colors || []);
-          setSneaker(detail[0] as ProductWithDetails);
+        // Try Supabase first
+        const product = await fetchProductById(id);
+        if (product && mounted) {
+          setSneaker(product);
+          setAvailableSizes(product.available_sizes ?? []);
+          setAvailableColors(product.available_colors ?? []);
+          setSelectedSize(product.available_sizes?.[0] ?? 10);
+          setSelectedColor(product.available_colors?.[0] ?? "Default");
+          return;
+        }
+        // Fallback to mock data
+        const mock = getProductWithDetails(id);
+        if (mock && mounted) {
+          setSneaker(mock);
+          setAvailableSizes(mock.available_sizes ?? []);
+          setAvailableColors(mock.available_colors ?? []);
+          setSelectedSize(mock.available_sizes?.[0] ?? 10);
+          setSelectedColor(mock.available_colors?.[0] ?? "Default");
+        } else if (mounted) {
+          setLoadError(true);
         }
       } catch (error) {
-        console.error("Failed to load Color n sizes:", error);
+        console.error("Failed to load product detail:", error);
+        // Fallback to mock data on error
+        const mock = getProductWithDetails(id);
+        if (mock && mounted) {
+          setSneaker(mock);
+          setAvailableSizes(mock.available_sizes ?? []);
+          setAvailableColors(mock.available_colors ?? []);
+          setSelectedSize(mock.available_sizes?.[0] ?? 10);
+          setSelectedColor(mock.available_colors?.[0] ?? "Default");
+        } else if (mounted) {
+          setLoadError(true);
+        }
+      } finally {
+        if (mounted) {
+          const elapsed = Date.now() - startedAt;
+          const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
+          setTimeout(() => {
+            if (mounted) {
+              setIsLoading(false);
+              // Fade page in
+              Animated.timing(pageOpacity, {
+                toValue: 1,
+                duration: 240,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+              }).start();
+            }
+          }, remaining);
+        }
       }
     }
-    loadColorSizes();
-  }, []);
+    loadDetail();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
 
   const handleShare = useCallback(async () => {
     if (!sneaker) return;
@@ -95,11 +139,12 @@ export default function SneakerDetailScreen() {
     };
 
     try {
-      // Get existing cart
       const existingCart = await getCart();
-      const cart = existingCart?.items || [];
+      const cart =
+        existingCart && "items" in existingCart
+          ? (existingCart as Cart).items
+          : [];
 
-      // Check if item already exists
       const existingIndex = cart.findIndex(
         (item: CartItem) =>
           item.sneakerId === cartItem.sneakerId &&
@@ -115,7 +160,6 @@ export default function SneakerDetailScreen() {
 
       await saveCart({ items: cart, updatedAt: Date.now() });
 
-      // Navigate to cart
       router.push("/(tabs)/cart");
     } catch (error) {
       console.error("Failed to add to cart:", error);
@@ -124,58 +168,20 @@ export default function SneakerDetailScreen() {
     }
   }, [sneaker, selectedSize, selectedColor, quantity, router]);
 
-  const handleCheckout = useCallback(
-    (id: string) =>
-      router.push({
-        pathname: "/checkout",
-        params: { id },
-      }),
-    [router],
-  );
-
-  // // Save current selection to cart before checkout
-  // const cartItem: CartItem = {
-  //   id: `${sneaker.id}-${selectedSize}-${selectedColor}`,
-  //   sneakerId: sneaker.id,
-  //   name: sneaker.name,
-  //   brand: sneaker.brand_id,
-  //   price: sneaker.price,
-  //   thumb: sneaker.thumb,
-  //   size: selectedSize,
-  //   color: selectedColor,
-  //   quantity: quantity,
-  // };
-
-  // // Save to cart
-  // getCart().then((existingCart) => {
-  //   const cart = existingCart?.items || [];
-  //   const existingIndex = cart.findIndex(
-  //     (item: CartItem) =>
-  //       item.sneakerId === cartItem.sneakerId &&
-  //       item.size === cartItem.size &&
-  //       item.color === cartItem.color,
-  //   );
-
-  //   if (existingIndex >= 0) {
-  //     cart[existingIndex].quantity = quantity;
-  //   } else {
-  //     cart.push(cartItem);
-  //   }
-
-  //   saveCart({ items: cart, updatedAt: Date.now() }).then(() => {
-  //     // Navigate to checkout
-  //     router.push({
-  //       pathname: "/checkout",
-  //       params: {
-  //         sneakerId: sneaker.id,
-  //         size: selectedSize,
-  //         color: selectedColor,
-  //         quantity: quantity.toString(),
-  //       },
-  //     });
-  //   });
-  // });
-  // [sneaker, selectedSize, selectedColor, quantity, router]
+  const handleCheckout = useCallback(() => {
+    if (!sneaker) return;
+    router.push({
+      pathname: "/checkout",
+      params: {
+        id: sneaker.id,
+        productName: sneaker.name,
+        selectedSize: String(selectedSize),
+        selectedColor,
+        imageUrl: sneaker.thumb || "",
+        price: String(sneaker.price),
+      },
+    });
+  }, [router, sneaker, selectedSize, selectedColor]);
 
   const handleSizeSelect = useCallback((size: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -198,10 +204,44 @@ export default function SneakerDetailScreen() {
     [quantity],
   );
 
-  if (!sneaker) {
+  // Loading state — show loader, never blank
+  if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.emptyText}>No results found</Text>
+      <SafeAreaView
+        style={[styles.container, styles.loadingContainer]}
+        edges={["top"]}>
+        <LoadingOverlay
+          visible={true}
+          fullscreen
+          size={50}
+          color="#111111"
+          minDurationMs={200}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // Error state — only after loading completes
+  if (!sneaker || loadError) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.headerButton}>
+            <Text style={styles.headerIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Product</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.emptyText}>Product not found</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => router.back()}>
+            <Text style={styles.retryText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -234,211 +274,216 @@ export default function SneakerDetailScreen() {
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollArea}
-        contentContainerStyle={styles.scrollContent}>
-        {/* Hero Image - Reduced height */}
-        <View style={styles.heroSection}>
-          {sneaker.thumb ? (
-            <Image
-              source={{ uri: sneaker.thumb }}
-              style={styles.heroImage}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.placeholderHero}>
-              <Text style={styles.placeholderText}>No Image</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.contentContainer}>
-          {/* Compact Product Header */}
-          <View style={styles.productHeader}>
-            <View style={styles.titleLeft}>
-              <Text style={styles.productBrand}>{sneaker.brand_id}</Text>
-              <Text style={styles.productName} numberOfLines={2}>
-                {sneaker.name}
-              </Text>
-            </View>
-            <View style={styles.priceBlock}>
-              <Text style={styles.productPrice}>
-                {sneaker.price.toLocaleString("mn-MN")}₮
-              </Text>
-              {/* Original price not in new schema */}
-            </View>
-          </View>
-
-          {/* Compact Rating */}
-          <View style={styles.ratingRowCompact}>
-            <StarRating
-              rating={sneaker.avgRating || 0}
-              size={16}
-              showCount
-              reviewCount={sneaker.reviewCount || 0}
-            />
-          </View>
-
-          {/* Compact Color Selector */}
-          <View style={styles.selectorSection}>
-            <Text style={styles.selectorLabel}>Color</Text>
-            <View style={styles.colorGrid}>
-              {availableColors.map((color: string) => (
-                <TouchableOpacity
-                  key={color}
-                  style={[
-                    styles.colorChip,
-                    selectedColor === color && styles.colorChipActive,
-                  ]}
-                  onPress={() => handleColorSelect(color)}
-                  activeOpacity={0.7}>
-                  <View
-                    style={[
-                      styles.colorPreview,
-                      { backgroundColor: color },
-                      selectedColor === color && styles.colorPreviewActive,
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.colorChipText,
-                      selectedColor === color && styles.colorChipTextActive,
-                    ]}>
-                    {color}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Compact Size Selector */}
-          <View style={styles.selectorSection}>
-            <Text style={styles.selectorLabel}>Size</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeScrollContent}>
-              {availableSizes.map((size) => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.sizeButton,
-                    selectedSize === size && styles.sizeButtonActive,
-                  ]}
-                  onPress={() => handleSizeSelect(size)}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.sizeText,
-                      selectedSize === size && styles.sizeTextActive,
-                    ]}>
-                    {size}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Quantity Selector */}
-          <View style={styles.selectorSection}>
-            <Text style={styles.selectorLabel}>Quantity</Text>
-            <View style={styles.quantityRow}>
-              <TouchableOpacity
-                style={[
-                  styles.quantityButton,
-                  quantity <= 1 && styles.quantityButtonDisabled,
-                ]}
-                onPress={() => handleQuantityChange(-1)}
-                disabled={quantity <= 1}
-                activeOpacity={0.7}>
-                <Text
-                  style={[
-                    styles.quantityButtonText,
-                    quantity <= 1 && styles.quantityButtonTextDisabled,
-                  ]}>
-                  −
-                </Text>
-              </TouchableOpacity>
-              <Text style={styles.quantityText}>{quantity}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.quantityButton,
-                  quantity >= 10 && styles.quantityButtonDisabled,
-                ]}
-                onPress={() => handleQuantityChange(1)}
-                disabled={quantity >= 10}
-                activeOpacity={0.7}>
-                <Text
-                  style={[
-                    styles.quantityButtonText,
-                    quantity >= 10 && styles.quantityButtonTextDisabled,
-                  ]}>
-                  +
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Description */}
-          {sneaker.description ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.description}>{sneaker.description}</Text>
-            </View>
-          ) : null}
-
-          {/* Reviews */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeadingRow}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
-              {reviews.length > 0 ? (
-                <Text style={styles.sectionAction}>View all</Text>
-              ) : null}
-            </View>
-            {reviews.length === 0 ? (
-              <Text style={styles.emptyText}>No reviews yet</Text>
+      <Animated.View style={{ flex: 1, opacity: pageOpacity }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}>
+          {/* Hero Image */}
+          <View style={styles.heroSection}>
+            {sneaker.thumb ? (
+              <Image
+                source={{ uri: sneaker.thumb }}
+                style={styles.heroImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={150}
+              />
             ) : (
-              reviews.map((review) => (
-                <View key={review.id} style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewUser}>{review.user_id}</Text>
-                    <View style={styles.reviewRatingBadge}>
-                      <Text style={styles.reviewRating}>{review.rating}.0</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.reviewText}>{review.comment}</Text>
-                </View>
-              ))
+              <View style={styles.placeholderHero}>
+                <Text style={styles.placeholderText}>No Image</Text>
+              </View>
             )}
           </View>
 
-          {/* Bottom spacing for sticky bar */}
-          <View style={styles.bottomSpacer} />
+          <View style={styles.contentContainer}>
+            {/* Compact Product Header */}
+            <View style={styles.productHeader}>
+              <View style={styles.titleLeft}>
+                <Text style={styles.productBrand}>{sneaker.brand_id}</Text>
+                <Text style={styles.productName} numberOfLines={2}>
+                  {sneaker.name}
+                </Text>
+              </View>
+              <View style={styles.priceBlock}>
+                <Text style={styles.productPrice}>
+                  {sneaker.price.toLocaleString("mn-MN")}₮
+                </Text>
+              </View>
+            </View>
+
+            {/* Compact Rating */}
+            <View style={styles.ratingRowCompact}>
+              <StarRating
+                rating={sneaker.avgRating || 0}
+                size={16}
+                showCount
+                reviewCount={sneaker.reviewCount || 0}
+              />
+            </View>
+
+            {/* Compact Color Selector */}
+            <View style={styles.selectorSection}>
+              <Text style={styles.selectorLabel}>Color</Text>
+              <View style={styles.colorGrid}>
+                {availableColors.map((color: string) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorChip,
+                      selectedColor === color && styles.colorChipActive,
+                    ]}
+                    onPress={() => handleColorSelect(color)}
+                    activeOpacity={0.7}>
+                    <View
+                      style={[
+                        styles.colorPreview,
+                        { backgroundColor: color },
+                        selectedColor === color && styles.colorPreviewActive,
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.colorChipText,
+                        selectedColor === color && styles.colorChipTextActive,
+                      ]}>
+                      {color}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Compact Size Selector */}
+            <View style={styles.selectorSection}>
+              <Text style={styles.selectorLabel}>Size</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.sizeScrollContent}>
+                {availableSizes.map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    style={[
+                      styles.sizeButton,
+                      selectedSize === size && styles.sizeButtonActive,
+                    ]}
+                    onPress={() => handleSizeSelect(size)}
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        styles.sizeText,
+                        selectedSize === size && styles.sizeTextActive,
+                      ]}>
+                      {size}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Quantity Selector */}
+            <View style={styles.selectorSection}>
+              <Text style={styles.selectorLabel}>Quantity</Text>
+              <View style={styles.quantityRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.quantityButton,
+                    quantity <= 1 && styles.quantityButtonDisabled,
+                  ]}
+                  onPress={() => handleQuantityChange(-1)}
+                  disabled={quantity <= 1}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.quantityButtonText,
+                      quantity <= 1 && styles.quantityButtonTextDisabled,
+                    ]}>
+                    −
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityText}>{quantity}</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.quantityButton,
+                    quantity >= 10 && styles.quantityButtonDisabled,
+                  ]}
+                  onPress={() => handleQuantityChange(1)}
+                  disabled={quantity >= 10}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.quantityButtonText,
+                      quantity >= 10 && styles.quantityButtonTextDisabled,
+                    ]}>
+                    +
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Description */}
+            {sneaker.description ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>{sneaker.description}</Text>
+              </View>
+            ) : null}
+
+            {/* Reviews */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeadingRow}>
+                <Text style={styles.sectionTitle}>Reviews</Text>
+                {reviews.length > 0 ? (
+                  <Text style={styles.sectionAction}>View all</Text>
+                ) : null}
+              </View>
+              {reviews.length === 0 ? (
+                <Text style={styles.emptyText}>No reviews yet</Text>
+              ) : (
+                reviews.map((review) => (
+                  <View key={review.id} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <Text style={styles.reviewUser}>{review.user_id}</Text>
+                      <View style={styles.reviewRatingBadge}>
+                        <Text style={styles.reviewRating}>
+                          {review.rating}.0
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.reviewText}>{review.comment}</Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Bottom spacing for sticky bar */}
+            <View style={styles.bottomSpacer} />
+          </View>
+        </ScrollView>
+
+        {/* Premium Bottom Action Bar */}
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.addToCartButton}
+            onPress={addToCart}
+            activeOpacity={0.9}
+            disabled={isAddingToCart}>
+            <Text style={styles.addToCartText}>Add to Cart</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.checkoutButton}
+            onPress={handleCheckout}
+            activeOpacity={0.98}
+            disabled={isAddingToCart}>
+            <Text style={styles.checkoutPrice}>
+              ₮{totalPrice.toLocaleString("mn-MN")}
+            </Text>
+            <Text style={styles.checkoutLabel}>Checkout</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* Premium Bottom Action Bar */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.addToCartButton}
-          onPress={addToCart}
-          activeOpacity={0.9}
-          disabled={isAddingToCart}>
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.checkoutButton}
-          onPress={handleCheckout}
-          activeOpacity={0.98}
-          disabled={isAddingToCart}>
-          <Text style={styles.checkoutPrice}>
-            ₮{totalPrice.toLocaleString("mn-MN")}
-          </Text>
-          <Text style={styles.checkoutLabel}>Checkout</Text>
-        </TouchableOpacity>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -447,6 +492,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  retryButton: {
+    backgroundColor: Colors.light.tint,
+    paddingHorizontal: Spacing.lg + 8,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  retryText: {
+    fontSize: Typography.body.fontSize,
+    fontWeight: Typography.body.fontWeight,
+    color: "#fff",
+    letterSpacing: 0.3,
   },
   emptyText: {
     fontSize: Typography.body.fontSize,
@@ -540,12 +607,6 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     lineHeight: 22,
   },
-  productModel: {
-    fontSize: Typography.body.fontSize,
-    color: Colors.light.textTertiary,
-    fontWeight: Typography.body.fontWeight,
-    marginTop: 2,
-  },
   priceBlock: {
     alignItems: "flex-end",
   },
@@ -553,12 +614,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: Colors.light.text,
-  },
-  originalPrice: {
-    fontSize: Typography.caption.fontSize,
-    color: Colors.light.textTertiary,
-    textDecorationLine: "line-through",
-    marginTop: 2,
   },
   ratingRowCompact: {
     flexDirection: "row",

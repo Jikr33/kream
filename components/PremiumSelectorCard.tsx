@@ -1,5 +1,11 @@
 import React, { memo, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  PressableProps,
+} from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
@@ -8,9 +14,13 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
+type AnimatedPressableProps = PressableProps & {
+  style?: ReturnType<typeof useAnimatedStyle>;
+};
+
 const AnimatedPressable = Animated.createAnimatedComponent(
-  Pressable as React.ComponentType<any>,
-);
+  Pressable,
+) as React.ComponentType<AnimatedPressableProps>;
 
 import { Colors } from "@/constants/theme";
 
@@ -49,42 +59,15 @@ const PremiumSelectorCard = memo(function PremiumSelectorCard({
   const animatedStyle = useAnimatedStyle(() => {
     const isActive = selected.value === 1;
     return {
-      backgroundColor: withSpring(
-        isActive ? Colors.light.card : "transparent",
-        {
-          damping: 15,
-          stiffness: 200,
-        },
-      ),
-      borderColor: withSpring(
-        isActive ? Colors.light.text : Colors.light.border,
-        {
-          damping: 15,
-          stiffness: 200,
-        },
-      ),
       transform: [
         {
           scale: withSpring(isActive ? 1.15 : 1, {
-            damping: 15,
-            stiffness: 200,
+            damping: 18,
+            stiffness: 220,
+            mass: 0.6,
           }),
         },
       ],
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: selected.value === 1 ? 2 : 0 },
-      shadowOpacity: withSpring(selected.value === 1 ? 0.08 : 0, {
-        damping: 15,
-        stiffness: 200,
-      }),
-      shadowRadius: withSpring(selected.value === 1 ? 4 : 0, {
-        damping: 15,
-        stiffness: 200,
-      }),
-      elevation: withSpring(selected.value === 1 ? 2 : 0, {
-        damping: 15,
-        stiffness: 200,
-      }),
     };
   });
 
@@ -155,12 +138,9 @@ const styles = StyleSheet.create({
     width: CHIP_SIZE,
     height: CHIP_SIZE,
     borderRadius: CHIP_SIZE / 2,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
-    backgroundColor: "transparent",
   },
   brandChipAll: {
     backgroundColor: "transparent",

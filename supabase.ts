@@ -1,4 +1,13 @@
 /**
+<<<<<<< HEAD
+ * @deprecated Use "@/lib/supabase" instead.
+ *
+ * This file is kept for backward compatibility.
+ * The Supabase client has moved to lib/supabase.ts
+ */
+
+export { supabase } from "@/lib/supabase";
+=======
  * Supabase Client
  * 
  * This file ONLY contains the Supabase client initialization.
@@ -34,3 +43,4 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
   },
 });
+>>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4

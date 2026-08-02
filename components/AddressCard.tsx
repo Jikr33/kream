@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius, Shadows } from "@/constants/theme";
+import { BorderRadius, Shadows } from "@/constants/theme";
 
 type AddressCardProps = {
   recipientName: string;
@@ -33,9 +33,7 @@ const AddressCard = memo(function AddressCard({
         {hasAddress ? (
           <>
             <Text style={styles.address}>{address}</Text>
-            {postalCode && (
-              <Text style={styles.postalCode}>{postalCode}</Text>
-            )}
+            {postalCode && <Text style={styles.postalCode}>{postalCode}</Text>}
             {phoneNumber && (
               <Text style={styles.phoneNumber}>{phoneNumber}</Text>
             )}
@@ -49,9 +47,7 @@ const AddressCard = memo(function AddressCard({
         style={styles.actionButton}
         onPress={onEdit || onChange}
         activeOpacity={0.7}>
-        <Text style={styles.actionText}>
-          {hasAddress ? "Edit" : "Add"}
-        </Text>
+        <Text style={styles.actionText}>{hasAddress ? "Edit" : "Add"}</Text>
       </TouchableOpacity>
     </View>
   );

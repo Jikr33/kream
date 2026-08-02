@@ -3,20 +3,46 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Animated,
 } from "react-native";
+import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import type { SneakerCardProps } from "@/types";
 import { getBrandName } from "@/constants/brands";
 import { Colors } from "@/constants/theme";
 
-/** Premium SneakerCard - Compact, elegant, image-focused */
+/**
+ * SneakerCard
+ * ===========
+ * Uniform, image-dominant, premium product card.
+ *
+ * Design rules:
+ *  - Every card has an IDENTICAL fixed height (compact is the standard).
+ *  - The image area dominates (~70% of card height) and uses contain
+ *    so it is never cropped, stretched, or distorted.
+ *  - The info area is compact (~30% shorter than before) with tight
+ *    padding and line spacing.
+ *  - Product name is capped at 2 lines and never grows the card.
+ *  - Brand is quiet (11px, medium, muted grey).
+ *  - Price is prominent and always aligned consistently.
+ *  - Cards never resize based on image dimensions, name length, brand,
+ *    or price.
+ */
+
+// One fixed height for every card. Compact is the standard.
+const CARD_HEIGHT = 210;
+const CARD_RADIUS = 12;
+
+// Image area dominates the card. ~70% of height.
+const IMAGE_HEIGHT = Math.round(CARD_HEIGHT * 0.7); // 147
+
+// Info area is compact and fixed.
+const INFO_HEIGHT = CARD_HEIGHT - IMAGE_HEIGHT; // 63
+
 const SneakerCard = memo(function SneakerCard({
   sneaker,
   onPress,
-  compact = false,
 }: SneakerCardProps & { compact?: boolean }) {
   const scale = useRef(new Animated.Value(1)).current;
   const imageUri = sneaker.thumb || undefined;
@@ -24,7 +50,7 @@ const SneakerCard = memo(function SneakerCard({
 
   const handlePressIn = () => {
     Animated.timing(scale, {
-      toValue: 0.97,
+      toValue: 0.98,
       duration: 150,
       useNativeDriver: true,
     }).start();
@@ -41,37 +67,34 @@ const SneakerCard = memo(function SneakerCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, compact && styles.cardCompact]}
+      style={styles.card}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      activeOpacity={0.92}>
-      <Animated.View
-        style={[
-          styles.cardInner,
-          compact && styles.cardInnerCompact,
-          { transform: [{ scale }] },
-        ]}>
-        {/* Image Hero */}
-        <View
-          style={[styles.imageWrapper, compact && styles.imageWrapperCompact]}>
-          <View style={styles.imageContainer}>
-            {imageUri ? (
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.placeholder}>
-                <Text style={styles.placeholderText}>No Image</Text>
-              </View>
-            )}
-          </View>
+      activeOpacity={0.92}
+      accessibilityLabel={`${brandName} ${sneaker.name}`}
+      accessibilityRole="button">
+      <Animated.View style={[styles.cardInner, { transform: [{ scale }] }]}>
+        {/* Image Hero — fixed height, contain, centered */}
+        <View style={styles.imageWrapper}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.image}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={120}
+              recyclingKey={sneaker.id}
+            />
+          ) : (
+            <View style={styles.placeholder}>
+              <Text style={styles.placeholderText}>No Image</Text>
+            </View>
+          )}
         </View>
 
-        {/* Info - Minimal, tight */}
-        <View style={[styles.info, compact && styles.infoCompact]}>
+        {/* Info — compact, fixed height, never grows */}
+        <View style={styles.info}>
           {brandName ? (
             <Text style={styles.brand} numberOfLines={1}>
               {brandName}
@@ -91,57 +114,35 @@ const SneakerCard = memo(function SneakerCard({
 
 export default SneakerCard;
 
-/** Premium Card Dimensions */
-const CARD_RADIUS = 12;
-const IMAGE_HEIGHT = 110;
-const IMAGE_HEIGHT_COMPACT = 100;
-
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
+    height: CARD_HEIGHT,
+    backgroundColor: Colors.light.card,
     borderRadius: CARD_RADIUS,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 0,
-  },
-  cardCompact: {
-    marginBottom: 0,
   },
   cardInner: {
-    backgroundColor: "#FFFFFF",
+    height: CARD_HEIGHT,
+    backgroundColor: Colors.light.card,
     borderRadius: CARD_RADIUS,
     overflow: "hidden",
-  },
-  cardInnerCompact: {
-    marginBottom: 0,
   },
   imageWrapper: {
     height: IMAGE_HEIGHT,
     width: "100%",
     overflow: "hidden",
-    borderTopLeftRadius: CARD_RADIUS,
-    borderTopRightRadius: CARD_RADIUS,
     backgroundColor: Colors.light.backgroundSecondary,
-  },
-  imageWrapperCompact: {
-    height: IMAGE_HEIGHT_COMPACT,
-  },
-  imageContainer: {
-    width: "100%",
-    height: "100%",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 0,
   },
   image: {
     width: "100%",
     height: "100%",
   },
   placeholder: {
-    flex: 1,
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.light.backgroundSecondary,
@@ -153,36 +154,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   info: {
+    height: INFO_HEIGHT,
     paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 10,
-    gap: 3,
-  },
-  infoCompact: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 7,
+    paddingBottom: 7,
     gap: 2,
+    justifyContent: "flex-start",
   },
   brand: {
     fontSize: 11,
     fontWeight: "500",
     color: Colors.light.textSecondary,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
     textTransform: "uppercase",
+    marginBottom: 0,
   },
   name: {
     fontSize: 13,
     fontWeight: "600",
     color: Colors.light.text,
-    lineHeight: 18,
+    lineHeight: 16,
     letterSpacing: 0.1,
   },
   price: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: Colors.light.text,
     letterSpacing: 0.1,
-    marginTop: 4,
+    marginTop: "auto",
   },
 });

@@ -1,7 +1,8 @@
-import React, { memo, useState } from "react";
+import React, { memo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius, Shadows } from "@/constants/theme";
+import { BorderRadius, Shadows } from "@/constants/theme";
+import * as Haptics from "expo-haptics";
 
 export type ShippingMethod = "standard" | "express";
 
@@ -47,7 +48,10 @@ const ShippingMethodSelector = memo(function ShippingMethodSelector({
           <TouchableOpacity
             key={method.id}
             style={[styles.card, isSelected && styles.cardSelected]}
-            onPress={() => onPressWithHaptic(method.id)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onSelect(method.id);
+            }}
             activeOpacity={0.7}
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={`${method.title} - ${method.description}`}>
@@ -96,10 +100,6 @@ const ShippingMethodSelector = memo(function ShippingMethodSelector({
     </View>
   );
 });
-
-async function onPressWithHaptic(methodId: ShippingMethod) {
-  // Haptic feedback would be triggered here in the parent component
-}
 
 export default ShippingMethodSelector;
 

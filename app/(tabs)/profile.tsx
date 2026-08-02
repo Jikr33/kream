@@ -16,8 +16,18 @@ export default function ProfileScreen() {
   const router = useRouter();
   const user = { email: "user@example.com" };
 
-  const menuItems = [
-    { title: "My Orders", subtitle: "Track your orders", onPress: () => router.push("/orders") },
+  type MenuItem = {
+    title: string;
+    subtitle: string;
+    onPress?: () => void;
+  };
+
+  const menuItems: MenuItem[] = [
+    {
+      title: "My Orders",
+      subtitle: "Track your orders",
+      onPress: () => router.push("/orders"),
+    },
     {
       title: "Payment Methods",
       subtitle: "Manage payment options",
@@ -76,8 +86,8 @@ export default function ProfileScreen() {
         {/* Menu Items */}
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               style={styles.menuItem}
               onPress={item.onPress}>
               <View style={styles.menuContent}>

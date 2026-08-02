@@ -2,13 +2,13 @@ import React, { memo, useState } from "react";
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { Image } from "expo-image";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius, Shadows } from "@/constants/theme";
+import { BorderRadius, Shadows } from "@/constants/theme";
 import * as Haptics from "expo-haptics";
 
 type ColorOption = {
@@ -78,7 +78,9 @@ const CheckoutProductCard = memo(function CheckoutProductCard({
           <Image
             source={{ uri: imageUrl }}
             style={styles.image}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={150}
           />
         ) : (
           <View style={styles.placeholderContainer}>

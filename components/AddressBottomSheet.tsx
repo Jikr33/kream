@@ -13,7 +13,7 @@ import {
   Dimensions,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Colors, BorderRadius, Shadows } from "@/constants/theme";
+import { BorderRadius } from "@/constants/theme";
 
 export type AddressData = {
   recipientName: string;

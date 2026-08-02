@@ -4,22 +4,35 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
-import { getCart } from "@/utils/storage";
+import { getCart, type Cart, type CartItem } from "@/utils/storage";
+import LoadingOverlay from "@/components/LoadingOverlay";
 
 export default function CartScreen() {
   const router = useRouter();
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadCart();
-  }, []);
-
-  const loadCart = async () => {
-    const cart = await getCart();
-    if (cart?.items) {
-      setCartItems(cart.items);
+    let mounted = true;
+    async function loadCart() {
+      try {
+        const cart = await getCart();
+        if (mounted) {
+          if (cart && "items" in cart) {
+            setCartItems((cart as Cart).items);
+          }
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Failed to load cart:", error);
+        if (mounted) setIsLoading(false);
+      }
     }
-  };
+    loadCart();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,6 +67,14 @@ export default function CartScreen() {
           ))}
         </View>
       )}
+
+      <LoadingOverlay
+        visible={isLoading}
+        fullscreen
+        size={50}
+        color="#111111"
+        minDurationMs={200}
+      />
     </SafeAreaView>
   );
 }

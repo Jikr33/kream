@@ -55,7 +55,7 @@ export const mockProducts: Product[] = [
       "The iconic Nike Air Force 1 Low in pristine white leather. Features a clean upper with perforated detailing and a comfortable Air cushioned midsole.",
     price: 120000,
     thumb:
-      "https://unsplash.com/photos/green-and-black-nike-athletic-shoe-kP6knT7tjn4",
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&h=800&fit=crop",
     available_colors: ["White", "Black", "Grey"],
     available_sizes: [7, 8, 8.5, 9, 9.5, 10, 10.5, 11, 12],
     cargo_fee: 3500,
@@ -75,7 +75,7 @@ export const mockProducts: Product[] = [
       "Adidas Ultraboost 22 with Boost midsole for responsive energy return. Features a Primeknit upper and Torsion System for stability.",
     price: 145000,
     thumb:
-      "https://unsplash.com/photos/unpaired-off-white-x-nike-air-force-1-low-top-sneaker-PqbL_mxmaUE",
+      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800&h=800&fit=crop",
     available_colors: ["Black", "White", "Grey"],
     available_sizes: [8, 8.5, 9, 9.5, 10, 11],
     cargo_fee: 3500,
@@ -95,7 +95,7 @@ export const mockProducts: Product[] = [
       "New Balance 550 with classic suede and mesh upper. Features ENCAP midsole for cushioning and a durable outsole.",
     price: 85000,
     thumb:
-      "https://unsplash.com/photos/black-and-white-nike-athletic-shoes-s-gYAbQToXk",
+      "https://images.unsplash.com/photo-1539185441755-76947ce34972?w=800&h=800&fit=crop",
     available_colors: ["White", "Grey"],
     available_sizes: [7, 8, 9, 10, 11, 12],
     cargo_fee: 3500,
@@ -115,7 +115,7 @@ export const mockProducts: Product[] = [
       "Air Jordan 1 Retro in the iconic 'Chicago' colorway. Premium leather upper with Nike Air cushioning in the heel.",
     price: 280000,
     thumb:
-      "https://unsplash.com/photos/blue-and-black-nike-high-top-sneakers-BWPqHZBhMVA",
+      "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800&h=800&fit=crop",
     available_colors: ["Red", "Black", "White"],
     available_sizes: [8, 8.5, 9, 9.5, 10, 10.5, 11, 12],
     cargo_fee: 3500,

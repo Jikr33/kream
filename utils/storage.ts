@@ -1,26 +1,52 @@
 import * as SecureStore from "expo-secure-store";
+import type { AddressData } from "@/types";
 
 const STORAGE_KEYS = {
   GUEST_ADDRESS: "kream_guest_address",
   CART: "kream_cart",
 } as const;
 
-export type AddressData = {
-  recipientName: string;
-  phoneNumber: string;
-  email: string;
-  country: string;
-  city: string;
-  district: string;
-  streetAddress: string;
-  postalCode: string;
-  deliveryInstructions: string;
+export type { AddressData };
+
+export type CartItem = {
+  id: string;
+  sneakerId: string;
+  name: string;
+  brand: string;
+  price: number;
+  thumb: string | null;
+  size: number;
+  color: string;
+  quantity: number;
+};
+
+export type Cart = {
+  items: CartItem[];
+  updatedAt: number;
+};
+
+export type CheckoutCart = {
+  product: {
+    brand_id: string;
+    name: string;
+    price: number;
+    thumb: string | null;
+  };
+  variant: {
+    size: string;
+    color: string;
+    quantity: number;
+    availableSizes: string[];
+    availableColors: { name: string; value: string }[];
+    maxStock: number;
+  };
+  shippingMethod: "standard" | "express";
 };
 
 export async function getGuestAddress(): Promise<AddressData | null> {
   try {
     const data = await SecureStore.getItemAsync(STORAGE_KEYS.GUEST_ADDRESS);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as AddressData) : null;
   } catch (error) {
     console.error("[Storage] Failed to get guest address:", error);
     return null;
@@ -46,17 +72,17 @@ export async function clearGuestAddress(): Promise<void> {
   }
 }
 
-export async function getCart(): Promise<any | null> {
+export async function getCart(): Promise<Cart | CheckoutCart | null> {
   try {
     const data = await SecureStore.getItemAsync(STORAGE_KEYS.CART);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as Cart | CheckoutCart) : null;
   } catch (error) {
     console.error("[Storage] Failed to get cart:", error);
     return null;
   }
 }
 
-export async function saveCart(cart: any): Promise<void> {
+export async function saveCart(cart: Cart | CheckoutCart): Promise<void> {
   try {
     await SecureStore.setItemAsync(STORAGE_KEYS.CART, JSON.stringify(cart));
   } catch (error) {
