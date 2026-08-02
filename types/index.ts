@@ -2,6 +2,7 @@ import { Colors } from "@/constants/theme";
 import { translationValues } from "@/constants/translations";
 import type { TextProps, ViewProps } from "react-native";
 
+// Database Types
 export type TableRow<T> = {
   Row: T;
   Insert: T;
@@ -14,6 +15,7 @@ export type Brand = {
   name: string;
   logo: string;
 };
+
 export type Product = {
   id: string;
   brand_id: string;
@@ -48,15 +50,127 @@ export type Review = {
   created_at?: string | null;
 };
 
+// ============================================
+// Payment Types (Wire Integration)
+// ============================================
+
+export type PaymentStatus = 
+  | "pending_payment"
+  | "processing"
+  | "paid"
+  | "cancelled"
+  | "failed";
+
+export type OrderStatus = 
+  | "pending_payment"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export type WirePaymentIntent = {
+  id: string;
+  object: "payment_intent";
+  amount: number;
+  currency: string;
+  description: string;
+  status: "new" | "processing" | "succeeded" | "canceled" | "failed";
+  client_secret: string;
+  automatic_operator: boolean;
+  allowed_operators: string[];
+  selected_operator: string | null;
+  next_action: WireNextAction | null;
+  metadata: Record<string, string>;
+  livemode: boolean;
+  created: number;
+  expires_at: number;
+};
+
+export type WireNextAction = {
+  type: string;
+  redirect?: {
+    url: string;
+  };
+};
+
+export type WireCheckoutSession = {
+  id: string;
+  object: "checkout_session";
+  payment_intent: string;
+  url: string;
+  status: "open" | "complete" | "expired";
+  created: number;
+  expires_at: number;
+};
+
+export type WireWebhookEvent = {
+  id: string;
+  object: "event";
+  type: "payment_intent.succeeded" | "payment_intent.failed" | "payment_intent.canceled";
+  created: number;
+  data: {
+    object: WirePaymentIntent;
+  };
+};
+
+// ============================================
+// Order Types
+// ============================================
+
+export type AddressData = {
+  recipientName: string;
+  phoneNumber: string;
+  email: string;
+  country: string;
+  city: string;
+  district: string;
+  streetAddress: string;
+  postalCode: string;
+  postal_code?: string;
+  deliveryInstructions: string;
+};
+
+export type ShippingSnapshot = {
+  method: "standard" | "express";
+  fee: number;
+  estimatedDays: string;
+};
+
+export type ProductSnapshot = {
+  productId: string;
+  brandId: string;
+  name: string;
+  price: number;
+  size: string;
+  color: string;
+  quantity: number;
+  imageUrl: string | null;
+};
+
 export type Order = {
   id: string;
-  user_id?: string | null;
+  user_id: string | null;
+  // Product snapshot
+  product_snapshot: ProductSnapshot;
+  // Shipping snapshot
+  shipping_snapshot: ShippingSnapshot;
+  // Pricing
+  subtotal: number;
+  platform_fee: number;
+  shipping_fee: number;
   total_amount: number;
-  status: string;
-  payment_method?: string | null;
-  shipping_address?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
+  // Status
+  payment_status: PaymentStatus;
+  order_status: OrderStatus;
+  // Payment info
+  payment_method: string | null;
+  payment_provider: "wire" | null;
+  wire_payment_intent_id: string | null;
+  wire_checkout_url: string | null;
+  // Metadata
+  shipping_address: AddressData;
+  created_at: string;
+  updated_at: string;
 };
 
 export type OrderItem = {
@@ -67,6 +181,33 @@ export type OrderItem = {
   price: number;
   created_at?: string | null;
 };
+
+// ============================================
+// Payment Request/Response Types
+// ============================================
+
+export type CreatePaymentRequest = {
+  orderId: string;
+  operatorIds?: string[];
+  returnUrl?: string;
+  cancelUrl?: string;
+};
+
+export type CreatePaymentResponse = {
+  checkoutUrl: string;
+  paymentIntentId: string;
+  expiresAt: number;
+};
+
+export type PaymentStatusResponse = {
+  status: PaymentStatus;
+  paymentIntentId: string;
+  message?: string;
+};
+
+// ============================================
+// UI Component Types
+// ============================================
 
 export type SneakerCardProps = {
   sneaker: Product;
@@ -106,18 +247,6 @@ export type IconSymbolName =
 export type TranslationKey = keyof typeof translationValues;
 export type ColorName = keyof typeof Colors.light;
 
-export type AddressData = {
-  recipientName: string;
-  phoneNumber: string;
-  email: string;
-  country: string;
-  city: string;
-  district: string;
-  streetAddress: string;
-  postalCode: string;
-  deliveryInstructions: string;
-};
-
 export type UserProfile = {
   id: string;
   email?: string;
@@ -125,6 +254,10 @@ export type UserProfile = {
   created_at?: string;
   updated_at?: string;
 };
+
+// ============================================
+// Database Type Definitions
+// ============================================
 
 export type Database = {
   public: {

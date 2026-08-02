@@ -1,50 +1,124 @@
-import React from "react";
+/**
+ * Orders Screen
+ * 
+ * Displays user's order history.
+ * Uses the orders service for data loading.
+ */
+
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { supabase } from "@/supabase";
+import { loadUserOrders, formatOrderStatus, formatPaymentStatus, getPaymentStatusColor } from "@/services/orders";
+import type { Order } from "@/types";
 
 export default function OrdersScreen() {
   const router = useRouter();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const orders = [
-    {
-      id: "order-1",
-      total: 265000,
-      status: "delivered",
-      date: "2024-06-15",
-      items: 2,
-    },
-    {
-      id: "order-2",
-      total: 85000,
-      status: "shipped",
-      date: "2024-06-28",
-      items: 1,
-    },
-  ];
+  // Load orders on mount
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "delivered":
-        return Colors.light.success;
-      case "shipped":
-        return Colors.light.tint;
-      case "pending":
-        return "#f59e0b";
-      case "cancelled":
-        return Colors.light.error;
-      default:
-        return Colors.light.textTertiary;
+  const loadOrders = async () => {
+    try {
+      setError(null);
+      
+      // Get current user
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        setOrders([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Load orders for this user
+      const userOrders = await loadUserOrders(session.user.id);
+      setOrders(userOrders);
+    } catch (err) {
+      console.error("[OrdersScreen] Failed to load orders:", err);
+      setError("Failed to load orders");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    loadOrders();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getOrderDisplayStatus = (order: Order) => {
+    // Show order status for fulfilled orders, payment status for pending
+    if (order.order_status === "processing" || 
+        order.order_status === "shipped" || 
+        order.order_status === "delivered") {
+      return formatOrderStatus(order.order_status);
+    }
+    return formatPaymentStatus(order.payment_status);
+  };
+
+  const getStatusColor = (order: Order) => {
+    if (order.order_status === "processing" || 
+        order.order_status === "shipped" || 
+        order.order_status === "delivered") {
+      switch (order.order_status) {
+        case "processing":
+          return "#3B82F6"; // Blue
+        case "shipped":
+          return "#8B5CF6"; // Purple
+        case "delivered":
+          return Colors.light.success;
+        default:
+          return Colors.light.textTertiary;
+      }
+    }
+    return getPaymentStatusColor(order.payment_status);
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft} />
+          <Text style={styles.headerTitle}>My Orders</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#111111" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -55,9 +129,26 @@ export default function OrdersScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {orders.length === 0 ? (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#111111"
+          />
+        }>
+        {error ? (
           <View style={styles.emptyContainer}>
+            <MaterialIcons name="error-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={loadOrders}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : orders.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="receipt-long" size={48} color="#9CA3AF" />
             <Text style={styles.emptyText}>No orders yet</Text>
             <TouchableOpacity
               style={styles.shopButton}
@@ -67,27 +158,49 @@ export default function OrdersScreen() {
           </View>
         ) : (
           orders.map((order) => (
-            <TouchableOpacity key={order.id} style={styles.orderCard}>
+            <TouchableOpacity 
+              key={order.id} 
+              style={styles.orderCard}
+              activeOpacity={0.7}>
               <View style={styles.orderHeader}>
                 <View>
-                  <Text style={styles.orderId}>Order: {order.id}</Text>
-                  <Text style={styles.orderDate}>{order.date}</Text>
+                  <Text style={styles.orderId}>
+                    Order: {order.id.slice(0, 8)}...
+                  </Text>
+                  <Text style={styles.orderDate}>
+                    {formatDate(order.created_at)}
+                  </Text>
                 </View>
                 <View
                   style={[
                     styles.statusBadge,
-                    { backgroundColor: getStatusColor(order.status) },
+                    { backgroundColor: getStatusColor(order) },
                   ]}>
-                  <Text style={styles.statusText}>{order.status}</Text>
+                  <Text style={styles.statusText}>
+                    {getOrderDisplayStatus(order)}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.orderDivider} />
 
+              <View style={styles.orderProduct}>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {order.product_snapshot.name}
+                </Text>
+                <Text style={styles.productDetails}>
+                  {order.product_snapshot.size} / {order.product_snapshot.color} / x{order.product_snapshot.quantity}
+                </Text>
+              </View>
+
+              <View style={styles.orderDivider} />
+
               <View style={styles.orderContent}>
-                <Text style={styles.orderItems}>{order.items} items</Text>
+                <Text style={styles.orderItems}>
+                  {order.product_snapshot.quantity} item{order.product_snapshot.quantity > 1 ? 's' : ''}
+                </Text>
                 <Text style={styles.orderTotal}>
-                  {order.total.toLocaleString("mn-MN")}₮
+                  ₮{order.total_amount.toLocaleString("mn-MN")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -127,17 +240,39 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: Spacing.xxl,
-    gap: Spacing.lg,
+    gap: Spacing.md,
   },
   emptyText: {
     fontSize: Typography.body.fontSize,
     color: Colors.light.textSecondary,
     fontWeight: Typography.body.fontWeight,
+  },
+  errorText: {
+    fontSize: Typography.body.fontSize,
+    color: Colors.light.error,
+    fontWeight: Typography.body.fontWeight,
+  },
+  retryButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  retryButtonText: {
+    fontSize: Typography.body.fontSize,
+    color: Colors.light.text,
+    fontWeight: "500",
   },
   shopButton: {
     backgroundColor: Colors.light.tint,
@@ -178,7 +313,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
   },
   statusText: {
@@ -192,6 +327,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.border,
     marginVertical: Spacing.sm,
   },
+  orderProduct: {
+    marginBottom: Spacing.xs,
+  },
+  productName: {
+    fontSize: Typography.body.fontSize,
+    fontWeight: "600",
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  productDetails: {
+    fontSize: Typography.caption.fontSize,
+    color: Colors.light.textSecondary,
+  },
   orderContent: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -202,7 +350,7 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
   },
   orderTotal: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     color: Colors.light.text,
   },

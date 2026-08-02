@@ -1,4 +1,20 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+/**
+ * Checkout Screen
+ * 
+ * Handles the checkout flow:
+ * 1. Display order summary
+ * 2. Collect shipping address
+ * 3. Select shipping method
+ * 4. Create order (pending_payment status)
+ * 5. Navigate to payment screen
+ * 
+ * IMPORTANT:
+ * - This screen ONLY creates the order
+ * - Payment is handled by the payment screen
+ * - Order status is updated by the webhook
+ */
+
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -8,7 +24,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Animated,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -37,6 +53,7 @@ import {
 } from "@/utils/storage";
 import { supabase } from "@/supabase";
 import { getBrandName } from "@/constants/brands";
+import { createOrder, OrderError } from "@/services/orders";
 
 type ProductVariant = {
   size: string;
@@ -63,6 +80,7 @@ export default function CheckoutScreen() {
     name: "Air Force 1 Low",
     price: 120000,
     thumb: null as string | null,
+    id: "default-product",
   });
 
   const [variant, setVariant] = useState<ProductVariant>({
@@ -81,6 +99,9 @@ export default function CheckoutScreen() {
   const [address, setAddress] = useState<AddressData | null>(null);
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("standard");
+
+  // Ref to prevent double submission
+  const isSubmitting = useRef(false);
 
   // Shipping fees
   const standardShippingFee = 3500;
@@ -112,7 +133,6 @@ export default function CheckoutScreen() {
 
   // Mark as initialized after first load
   useEffect(() => {
-    console.log(id, "checkout!!!!");
     if (!isInitialized && address && brandName) {
       setIsInitialized(true);
     }
@@ -136,7 +156,6 @@ export default function CheckoutScreen() {
       }
 
       // Check if user is logged in
-      // TODO: Replace with actual Supabase auth check
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -227,60 +246,75 @@ export default function CheckoutScreen() {
   };
 
   const handleCheckout = useCallback(async () => {
+    // Prevent double submission
+    if (isSubmitting.current || isLoading) {
+      return;
+    }
+
+    // Validate address
     if (!address) {
       setShowAddressSheet(true);
       return;
     }
 
     if (!userEmail && !address.email) {
-      alert("Please provide an email address for order confirmation.");
+      Alert.alert(
+        "Email Required",
+        "Please provide an email address for order confirmation."
+      );
       setShowAddressSheet(true);
       return;
     }
 
+    isSubmitting.current = true;
     setIsLoading(true);
+
     try {
-      // Create order in Supabase
+      // Get user session
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
 
-      const orderData = {
-        user_id: session?.user?.id || null,
-        sneaker_id: product.brand_id + "-" + product.name,
-        quantity: variant.quantity,
-        size: variant.size,
-        color: variant.color,
-        total_amount: total,
-        shipping_method: shippingMethod,
-        shipping_address: address,
-        payment_method: selectedPayment,
-        status: "pending",
-        created_at: new Date().toISOString(),
-      };
+      // Create order with pending_payment status
+      const order = await createOrder({
+        userId,
+        product: {
+          id: product.id || `${product.brand_id}-${product.name}`,
+          brandId: product.brand_id,
+          name: product.name,
+          price: product.price,
+          size: variant.size,
+          color: variant.color,
+          quantity: variant.quantity,
+          imageUrl: product.thumb,
+        },
+        shipping: {
+          method: shippingMethod,
+        },
+        address,
+      });
 
-      // In real app, insert to Supabase
-      // const { data: order, error } = await supabase
-      //   .from("orders")
-      //   .insert([orderData as any])
-      //   .select()
-      //   .single();
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Clear cart after successful order
+      // Clear cart after creating order
       await clearCart();
       await clearGuestAddress();
 
-      // Show success and navigate
-      alert("Payment successful! Order placed successfully.");
-      router.push("/(tabs)/profile");
+      // Navigate to payment screen with order ID
+      router.push(`/payment?orderId=${order.id}`);
     } catch (error) {
-      console.error("[Checkout] Payment failed:", error);
-      alert("Payment failed. Please try again.");
+      console.error("[Checkout] Order creation failed:", error);
+
+      if (error instanceof OrderError) {
+        Alert.alert("Error", error.message);
+      } else {
+        Alert.alert("Error", "Failed to create order. Please try again.");
+      }
     } finally {
       setIsLoading(false);
+      // Reset double-submit prevention after a delay
+      setTimeout(() => {
+        isSubmitting.current = false;
+      }, 1000);
     }
   }, [
     address,
@@ -291,6 +325,7 @@ export default function CheckoutScreen() {
     total,
     userEmail,
     router,
+    isLoading,
   ]);
 
   return (
@@ -389,7 +424,7 @@ export default function CheckoutScreen() {
           amount={total}
           onPress={handleCheckout}
           loading={isLoading}
-          disabled={!address}
+          disabled={!address || isLoading}
         />
 
         {/* Address Bottom Sheet */}
