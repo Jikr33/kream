@@ -1,219 +1,13 @@
 /**
-<<<<<<< HEAD
- * Kream Outlet – Orders Service
- * ==============================
- * Order-related operations:
- * - Create order
- * - Update order
- * - Cancel order
- * - Load orders
- * - Load order by ID
- * - No payment logic
- */
-
-import { supabase } from "@/lib/supabase";
-import type {
-  Order,
-  OrderItem,
-  CreateOrderInput,
-  OrderWithItems,
-} from "@/types";
-import { mockOrders, mockOrderItems, mockProducts } from "@/lib/mockData";
-
-const isSupabaseConfigured =
-  !!process.env.EXPO_PUBLIC_SUPABASE_URL &&
-  !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY &&
-  process.env.EXPO_PUBLIC_SUPABASE_URL !== "your-supabase-project-url";
-
-export async function createOrder(
-  input: CreateOrderInput,
-): Promise<string | null> {
-  const orderId = `order-${Date.now()}`;
-
-  if (!isSupabaseConfigured) {
-    // Mock creation - return a fake ID
-    return orderId;
-  }
-
-  try {
-    const { data: newOrder, error } = await supabase
-      .from("orders")
-      .insert({
-        id: orderId,
-        user_id: input.user_id ?? null,
-        product_id: input.product_id,
-        product_name: input.product_name,
-        product_image: input.product_image,
-        selected_size: input.selected_size,
-        selected_color: input.selected_color,
-        quantity: input.quantity,
-        subtotal: input.subtotal,
-        shipping_fee: input.shipping_fee,
-        total_amount: input.total,
-        currency: input.currency,
-        shipping_name: input.shipping_name,
-        shipping_phone: input.shipping_phone,
-        shipping_email: input.shipping_email,
-        shipping_address: input.shipping_address,
-        shipping_city: input.shipping_city,
-        shipping_district: input.shipping_district,
-        shipping_postal: input.shipping_postal,
-        payment_provider: input.payment_provider,
-        payment_method: input.payment_method,
-        payment_status: "pending",
-        order_status: "pending_payment",
-        coupon_id: input.coupon_id ?? null,
-        coupon_discount: input.coupon_discount ?? 0,
-      })
-      .select()
-      .single();
-
-    if (error || !newOrder) return orderId;
-
-    // Create order item
-    await supabase.from("order_items").insert({
-      order_id: orderId,
-      sneaker_id: input.product_id,
-      quantity: input.quantity,
-      price: input.subtotal,
-    });
-
-    return orderId;
-  } catch (error) {
-    console.error("[Orders] Failed to create order:", error);
-    return orderId;
-  }
-}
-
-export async function updateOrder(
-  orderId: string,
-  updates: Partial<Order>,
-): Promise<boolean> {
-  if (!isSupabaseConfigured) {
-    return false;
-  }
-
-  try {
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId);
-
-    return !error;
-  } catch (error) {
-    console.error("[Orders] Failed to update order:", error);
-    return false;
-  }
-}
-
-export async function cancelOrder(orderId: string): Promise<boolean> {
-  return updateOrder(orderId, {
-    order_status: "cancelled",
-    payment_status: "cancelled",
-  });
-}
-
-export async function fetchUserOrders(userId?: string): Promise<Order[]> {
-  if (!isSupabaseConfigured || !userId) {
-    // Return mock orders for user-1 (demo) or all if no user
-    return userId ? mockOrders.filter((o) => o.user_id === userId) : mockOrders;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) return mockOrders.filter((o) => o.user_id === userId);
-    return (data as Order[]) ?? [];
-  } catch {
-    return mockOrders.filter((o) => o.user_id === userId);
-  }
-}
-
-export async function fetchOrderById(
-  orderId: string,
-): Promise<OrderWithItems | null> {
-  if (!isSupabaseConfigured) {
-    const order = mockOrders.find((o) => o.id === orderId);
-    if (!order) return null;
-
-    const items = mockOrderItems
-      .filter((oi) => oi.order_id === orderId)
-      .map((oi) => {
-        const sneaker =
-          mockProducts.find((s) => s.id === oi.sneaker_id) ?? null;
-        return { ...oi, product: sneaker };
-      });
-
-    return { ...order, items };
-  }
-
-  try {
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("id", orderId)
-      .single();
-
-    if (orderError || !order) return null;
-
-    const { data: items, error: itemsError } = await supabase
-      .from("order_items")
-      .select("*, products(*)")
-      .eq("order_id", orderId);
-
-    if (itemsError || !items) {
-      return { ...(order as Order), items: [] };
-    }
-
-    return {
-      ...(order as Order),
-      items: (
-        items as Array<
-          OrderItem & { products: (typeof mockProducts)[0] | null }
-        >
-      ).map((i) => ({
-        ...i,
-        product: i.products,
-      })),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function updateShipping(
-  orderId: string,
-  shippingData: {
-    shipping_name: string;
-    shipping_phone: string;
-    shipping_email: string;
-    shipping_address: string;
-    shipping_city: string;
-    shipping_district: string;
-    shipping_postal: string;
-  },
-): Promise<boolean> {
-  return updateOrder(orderId, {
-    ...shippingData,
-    updated_at: new Date().toISOString(),
-  });
-=======
  * Orders Service
- * 
+ *
  * Handles all order-related operations.
  * This service is responsible for:
  * - Creating orders before payment
  * - Updating order status
  * - Loading orders
  * - Managing shipping information
- * 
+ *
  * NOTE: This service does NOT handle payment provider specifics.
  * Payment logic is handled by the payment service.
  */
@@ -236,7 +30,7 @@ export class OrderError extends Error {
   constructor(
     message: string,
     public code: string,
-    public statusCode?: number
+    public statusCode?: number,
   ) {
     super(message);
     this.name = "OrderError";
@@ -272,7 +66,7 @@ export type CreateOrderResponse = {
 
 /**
  * Creates a new order with pending_payment status.
- * 
+ *
  * This should be called BEFORE initiating payment.
  * The order is created with:
  * - Product snapshot (price frozen at creation time)
@@ -280,7 +74,7 @@ export type CreateOrderResponse = {
  * - Shipping address
  * - Payment status: pending_payment
  * - Order status: pending_payment
- * 
+ *
  * @param input - Order creation data
  * @returns Created order
  */
@@ -308,7 +102,10 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
   const shippingSnapshot: ShippingSnapshot = {
     method: input.shipping.method,
     fee: shippingFee,
-    estimatedDays: input.shipping.method === "standard" ? "5-10 business days" : "2-4 business days",
+    estimatedDays:
+      input.shipping.method === "standard"
+        ? "5-10 business days"
+        : "2-4 business days",
   };
 
   const orderData = {
@@ -340,7 +137,7 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     console.error("[OrdersService] createOrder error:", error);
     throw new OrderError(
       error.message || "Failed to create order",
-      "ORDER_CREATE_FAILED"
+      "ORDER_CREATE_FAILED",
     );
   }
 
@@ -354,13 +151,13 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
 /**
  * Updates the shipping address for an order.
  * Only allowed for orders with pending_payment status.
- * 
+ *
  * @param orderId - Order ID
  * @param address - New shipping address
  */
 export async function updateShippingAddress(
   orderId: string,
-  address: AddressData
+  address: AddressData,
 ): Promise<void> {
   // Verify order can be updated
   const { data: order, error: fetchError } = await supabase
@@ -376,7 +173,7 @@ export async function updateShippingAddress(
   if (order.payment_status !== "pending_payment") {
     throw new OrderError(
       "Cannot update address after payment has been initiated",
-      "ORDER_LOCKED"
+      "ORDER_LOCKED",
     );
   }
 
@@ -392,7 +189,7 @@ export async function updateShippingAddress(
     console.error("[OrdersService] updateShippingAddress error:", error);
     throw new OrderError(
       error.message || "Failed to update shipping address",
-      "UPDATE_FAILED"
+      "UPDATE_FAILED",
     );
   }
 }
@@ -401,13 +198,13 @@ export async function updateShippingAddress(
  * Updates the shipping method for an order.
  * Recalculates shipping fee if changed.
  * Only allowed for orders with pending_payment status.
- * 
+ *
  * @param orderId - Order ID
  * @param method - New shipping method
  */
 export async function updateShippingMethod(
   orderId: string,
-  method: "standard" | "express"
+  method: "standard" | "express",
 ): Promise<void> {
   // Verify order can be updated
   const { data: order, error: fetchError } = await supabase
@@ -423,7 +220,7 @@ export async function updateShippingMethod(
   if (order.payment_status !== "pending_payment") {
     throw new OrderError(
       "Cannot update shipping after payment has been initiated",
-      "ORDER_LOCKED"
+      "ORDER_LOCKED",
     );
   }
 
@@ -434,7 +231,8 @@ export async function updateShippingMethod(
   const newShippingSnapshot: ShippingSnapshot = {
     method,
     fee: newShippingFee,
-    estimatedDays: method === "standard" ? "5-10 business days" : "2-4 business days",
+    estimatedDays:
+      method === "standard" ? "5-10 business days" : "2-4 business days",
   };
 
   const { error } = await supabase
@@ -451,7 +249,7 @@ export async function updateShippingMethod(
     console.error("[OrdersService] updateShippingMethod error:", error);
     throw new OrderError(
       error.message || "Failed to update shipping method",
-      "UPDATE_FAILED"
+      "UPDATE_FAILED",
     );
   }
 }
@@ -459,7 +257,7 @@ export async function updateShippingMethod(
 /**
  * Links payment information to an order.
  * Called after creating a payment session.
- * 
+ *
  * @param orderId - Order ID
  * @param paymentIntentId - Wire PaymentIntent ID
  * @param checkoutUrl - Wire Checkout URL
@@ -469,7 +267,7 @@ export async function linkPaymentToOrder(
   orderId: string,
   paymentIntentId: string,
   checkoutUrl: string,
-  paymentMethod: string
+  paymentMethod: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("orders")
@@ -487,7 +285,7 @@ export async function linkPaymentToOrder(
     console.error("[OrdersService] linkPaymentToOrder error:", error);
     throw new OrderError(
       error.message || "Failed to link payment to order",
-      "LINK_FAILED"
+      "LINK_FAILED",
     );
   }
 }
@@ -499,13 +297,13 @@ export async function linkPaymentToOrder(
 /**
  * Marks an order as paid.
  * This should ONLY be called by the webhook handler.
- * 
+ *
  * @param orderId - Order ID
  * @param paymentIntentId - Wire PaymentIntent ID for verification
  */
 export async function markOrderAsPaid(
   orderId: string,
-  paymentIntentId: string
+  paymentIntentId: string,
 ): Promise<void> {
   // Verify the payment intent matches
   const { data: order, error: fetchError } = await supabase
@@ -519,10 +317,7 @@ export async function markOrderAsPaid(
   }
 
   if (order.wire_payment_intent_id !== paymentIntentId) {
-    throw new OrderError(
-      "Payment intent mismatch",
-      "PAYMENT_INTENT_MISMATCH"
-    );
+    throw new OrderError("Payment intent mismatch", "PAYMENT_INTENT_MISMATCH");
   }
 
   if (order.payment_status === "paid") {
@@ -544,7 +339,7 @@ export async function markOrderAsPaid(
     console.error("[OrdersService] markOrderAsPaid error:", error);
     throw new OrderError(
       error.message || "Failed to mark order as paid",
-      "UPDATE_FAILED"
+      "UPDATE_FAILED",
     );
   }
 }
@@ -552,7 +347,7 @@ export async function markOrderAsPaid(
 /**
  * Marks an order as failed.
  * This should ONLY be called by the webhook handler.
- * 
+ *
  * @param orderId - Order ID
  * @param paymentIntentId - Wire PaymentIntent ID for verification
  * @param reason - Optional failure reason
@@ -560,7 +355,7 @@ export async function markOrderAsPaid(
 export async function markOrderAsFailed(
   orderId: string,
   paymentIntentId: string,
-  reason?: string
+  reason?: string,
 ): Promise<void> {
   const { data: order, error: fetchError } = await supabase
     .from("orders")
@@ -574,10 +369,7 @@ export async function markOrderAsFailed(
 
   if (order.payment_status === "paid") {
     // Cannot fail an already paid order
-    throw new OrderError(
-      "Cannot fail an already paid order",
-      "INVALID_STATE"
-    );
+    throw new OrderError("Cannot fail an already paid order", "INVALID_STATE");
   }
 
   const { error } = await supabase
@@ -594,20 +386,20 @@ export async function markOrderAsFailed(
     console.error("[OrdersService] markOrderAsFailed error:", error);
     throw new OrderError(
       error.message || "Failed to mark order as failed",
-      "UPDATE_FAILED"
+      "UPDATE_FAILED",
     );
   }
 }
 
 /**
  * Marks an order as cancelled.
- * 
+ *
  * @param orderId - Order ID
  * @param paymentIntentId - Optional Wire PaymentIntent ID
  */
 export async function markOrderAsCancelled(
   orderId: string,
-  paymentIntentId?: string
+  paymentIntentId?: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("orders")
@@ -629,7 +421,7 @@ export async function markOrderAsCancelled(
     console.error("[OrdersService] markOrderAsCancelled error:", error);
     throw new OrderError(
       error.message || "Failed to cancel order",
-      "UPDATE_FAILED"
+      "UPDATE_FAILED",
     );
   }
 }
@@ -640,7 +432,7 @@ export async function markOrderAsCancelled(
 
 /**
  * Loads a single order by ID.
- * 
+ *
  * @param orderId - Order ID
  * @returns Order data
  */
@@ -661,14 +453,14 @@ export async function loadOrder(orderId: string): Promise<Order | null> {
 
 /**
  * Loads all orders for a user.
- * 
+ *
  * @param userId - User ID
  * @param limit - Maximum number of orders to return
  * @returns Array of orders
  */
 export async function loadUserOrders(
   userId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Order[]> {
   const { data, error } = await supabase
     .from("orders")
@@ -687,14 +479,14 @@ export async function loadUserOrders(
 
 /**
  * Loads all orders (for admin purposes).
- * 
+ *
  * @param limit - Maximum number of orders to return
  * @param offset - Offset for pagination
  * @returns Array of orders
  */
 export async function loadAllOrders(
   limit: number = 50,
-  offset: number = 0
+  offset: number = 0,
 ): Promise<Order[]> {
   const { data, error } = await supabase
     .from("orders")
@@ -716,14 +508,14 @@ export async function loadAllOrders(
 
 /**
  * Validates that an order belongs to a user.
- * 
+ *
  * @param orderId - Order ID
  * @param userId - User ID
  * @returns true if the order belongs to the user
  */
 export async function validateOrderOwnership(
   orderId: string,
-  userId: string
+  userId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("orders")
@@ -741,18 +533,20 @@ export async function validateOrderOwnership(
 /**
  * Validates order pricing hasn't been tampered with.
  * Compares current product price with order snapshot.
- * 
+ *
  * @param orderId - Order ID
  * @param currentPrice - Current product price
  * @returns true if prices match
  */
 export async function validateOrderPricing(
   orderId: string,
-  currentPrice: number
+  currentPrice: number,
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("orders")
-    .select("product_snapshot, total_amount, subtotal, platform_fee, shipping_fee")
+    .select(
+      "product_snapshot, total_amount, subtotal, platform_fee, shipping_fee",
+    )
     .eq("id", orderId)
     .single();
 
@@ -762,9 +556,11 @@ export async function validateOrderPricing(
 
   const order = data as unknown as Order;
   const expectedSubtotal = currentPrice * order.product_snapshot.quantity;
-  
-  return order.product_snapshot.price === currentPrice && 
-         order.subtotal === expectedSubtotal;
+
+  return (
+    order.product_snapshot.price === currentPrice &&
+    order.subtotal === expectedSubtotal
+  );
 }
 
 // ============================================
@@ -773,7 +569,7 @@ export async function validateOrderPricing(
 
 /**
  * Formats order status for display.
- * 
+ *
  * @param status - Order status
  * @returns Human-readable status
  */
@@ -790,41 +586,41 @@ export function formatOrderStatus(status: OrderStatus): string {
 
 /**
  * Formats payment status for display.
- * 
+ *
  * @param status - Payment status
  * @returns Human-readable status
  */
 export function formatPaymentStatus(status: PaymentStatus): string {
   const statusLabels: Record<PaymentStatus, string> = {
-    pending_payment: "Awaiting Payment",
-    processing: "Processing",
+    pending: "Awaiting Payment",
     paid: "Paid",
     cancelled: "Cancelled",
     failed: "Payment Failed",
+    expired: "Expired",
   };
   return statusLabels[status] || status;
 }
 
 /**
  * Gets the color for a payment status badge.
- * 
+ *
  * @param status - Payment status
  * @returns Hex color code
  */
 export function getPaymentStatusColor(status: PaymentStatus): string {
   const colors: Record<PaymentStatus, string> = {
-    pending_payment: "#F59E0B", // Amber
-    processing: "#3B82F6", // Blue
+    pending: "#F59E0B", // Amber
     paid: "#10B981", // Green
     cancelled: "#6B7280", // Gray
     failed: "#EF4444", // Red
+    expired: "#6B7280", // Gray
   };
   return colors[status] || "#6B7280";
 }
 
 /**
  * Gets the color for an order status badge.
- * 
+ *
  * @param status - Order status
  * @returns Hex color code
  */
@@ -837,5 +633,4 @@ export function getOrderStatusColor(status: OrderStatus): string {
     cancelled: "#6B7280", // Gray
   };
   return colors[status] || "#6B7280";
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
 }

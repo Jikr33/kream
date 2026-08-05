@@ -1,31 +1,21 @@
 /**
-<<<<<<< HEAD
- * @deprecated Use "@/lib/supabase" instead.
- *
- * This file is kept for backward compatibility.
- * The Supabase client has moved to lib/supabase.ts
- */
-
-export { supabase } from "@/lib/supabase";
-=======
  * Supabase Client
- * 
+ *
  * This file ONLY contains the Supabase client initialization.
- * 
+ *
  * IMPORTANT: This client is for React Native only.
  * Do NOT add business logic, payment logic, or order logic here.
  * Use the services in /services for those operations.
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { __DEV__ } from "react-native";
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
 const isConfigured = SUPABASE_URL && SUPABASE_ANON_KEY;
 
-if (__DEV__ && !isConfigured) {
+if (!isConfigured) {
   console.warn(
     "[Kream] Supabase not configured. " +
       "Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env",
@@ -43,4 +33,3 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
   },
 });
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4

@@ -1,34 +1,37 @@
 /**
  * Checkout Screen
- * 
+ *
  * Handles the checkout flow:
  * 1. Display order summary
  * 2. Collect shipping address
  * 3. Select shipping method
  * 4. Create order (pending_payment status)
  * 5. Navigate to payment screen
- * 
+ *
  * IMPORTANT:
  * - This screen ONLY creates the order
  * - Payment is handled by the payment screen
  * - Order status is updated by the webhook
  */
 
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-<<<<<<< HEAD
-=======
   Alert,
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as Haptics from "expo-haptics";
@@ -47,8 +50,6 @@ import AddressBottomSheet, {
 } from "@/components/AddressBottomSheet";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import {
-  getGuestAddress,
-  saveGuestAddress,
   getCart,
   saveCart,
   clearCart,
@@ -57,12 +58,14 @@ import {
 } from "@/utils/storage";
 import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
-<<<<<<< HEAD
-import { createOrder } from "@/services/orders";
-import { createPaymentSession } from "@/services/payment";
-=======
 import { createOrder, OrderError } from "@/services/orders";
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
+import {
+  getAddress,
+  setAddress as setGlobalAddress,
+  clearAddress,
+  loadAddressFromStorage,
+  type UserAddress,
+} from "@/store/address";
 
 type ProductVariant = {
   size: string;
@@ -96,16 +99,10 @@ export default function CheckoutScreen() {
   // Order state with product options
   const [product, setProduct] = useState({
     brand_id: "nike",
-<<<<<<< HEAD
-    name: params.productName || "Air Force 1 Low",
-    price: params.price ? Number(params.price) : 120000,
-    thumb: params.imageUrl || null,
-=======
     name: "Air Force 1 Low",
     price: 120000,
     thumb: null as string | null,
     id: "default-product",
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
   });
 
   const [variant, setVariant] = useState<ProductVariant>({
@@ -151,12 +148,10 @@ export default function CheckoutScreen() {
   const productName = product.name;
   const imageUrl = product.thumb;
 
-  // Load saved data on mount only if params were NOT provided
+  // Load saved data on mount
   useEffect(() => {
-    if (!hasParams) {
-      loadSavedData();
-    }
-  }, [hasParams]);
+    loadSavedData();
+  }, []);
 
   // Mark as initialized after first load
   useEffect(() => {
@@ -165,19 +160,33 @@ export default function CheckoutScreen() {
     }
   }, [address, brandName, isInitialized]);
 
-  const loadSavedData = async () => {
+  const loadSavedData = useCallback(async () => {
     try {
-      // Load guest address first
-      const savedAddress = await getGuestAddress();
-      if (savedAddress) {
-        setAddress(savedAddress);
+      console.log("[Checkout] loadSavedData started");
+      await loadAddressFromStorage();
+      console.log("[Checkout] loadAddressFromStorage completed");
+      const globalAddressData = getAddress();
+      console.log("[Checkout] getAddress returned:", globalAddressData);
+      if (globalAddressData) {
+        setAddress({
+          recipientName: globalAddressData.name,
+          phoneNumber: globalAddressData.phone,
+          email: globalAddressData.email,
+          country: "Mongolia",
+          city: globalAddressData.city,
+          district: globalAddressData.district,
+          streetAddress: globalAddressData.street,
+          postalCode: globalAddressData.postalCode || "",
+          deliveryInstructions: globalAddressData.deliveryInstructions,
+        });
       }
 
       // Load cart
       const savedCart = await getCart();
       if (savedCart && "product" in savedCart) {
         const checkoutCart = savedCart as CheckoutCart;
-        if (checkoutCart.product) setProduct(checkoutCart.product);
+        if (checkoutCart.product)
+          setProduct((prev) => ({ ...prev, ...checkoutCart.product }));
         if (checkoutCart.variant) setVariant(checkoutCart.variant);
         if (checkoutCart.shippingMethod)
           setShippingMethod(checkoutCart.shippingMethod);
@@ -189,21 +198,11 @@ export default function CheckoutScreen() {
       } = await supabase.auth.getSession();
       if (session?.user?.email) {
         setUserEmail(session.user.email);
-        // Load user's saved address from profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("address")
-          .eq("id", session.user.id)
-          .single();
-
-        if ((profile as any)?.address && !savedAddress) {
-          setAddress((profile as any).address);
-        }
       }
     } catch (error) {
       console.error("[Checkout] Failed to load saved data:", error);
     }
-  };
+  }, []);
 
   // Save cart whenever it changes
   useEffect(() => {
@@ -242,7 +241,18 @@ export default function CheckoutScreen() {
   const handleAddressSave = useCallback(
     async (newAddress: AddressData) => {
       setAddress(newAddress);
-      await saveGuestAddress(newAddress);
+
+      const userAddress: UserAddress = {
+        name: newAddress.recipientName,
+        phone: newAddress.phoneNumber,
+        email: newAddress.email,
+        city: newAddress.city,
+        district: newAddress.district,
+        street: newAddress.streetAddress,
+        postalCode: newAddress.postalCode || undefined,
+        deliveryInstructions: newAddress.deliveryInstructions,
+      };
+      setGlobalAddress(userAddress);
 
       // If user is logged in, also save to Supabase
       if (userEmail) {
@@ -288,7 +298,7 @@ export default function CheckoutScreen() {
     if (!userEmail && !address.email) {
       Alert.alert(
         "Email Required",
-        "Please provide an email address for order confirmation."
+        "Please provide an email address for order confirmation.",
       );
       setShowAddressSheet(true);
       return;
@@ -298,55 +308,6 @@ export default function CheckoutScreen() {
     setIsLoading(true);
 
     try {
-<<<<<<< HEAD
-      // Create order first
-      const orderId = await createOrder({
-        user_id: null, // TODO: replace with actual user ID
-        product_id: product.brand_id, // Using brand_id as product_id for demo
-        product_name: product.name,
-        product_image: product.thumb,
-        selected_size: variant.size,
-        selected_color: variant.color,
-        quantity: variant.quantity,
-        subtotal: product.price * variant.quantity,
-        shipping_fee: shippingFee,
-        total: total,
-        currency: "MNT",
-        shipping_name: address.recipientName,
-        shipping_phone: address.phoneNumber,
-        shipping_email: address.email,
-        shipping_address: address.streetAddress,
-        shipping_city: address.city,
-        shipping_district: address.district,
-        shipping_postal: address.postalCode,
-        payment_provider: "wire",
-        payment_method: selectedPayment,
-      });
-
-      if (!orderId) {
-        throw new Error("Failed to create order");
-      }
-
-      // Create Wire payment session
-      const paymentResult = await createPaymentSession(
-        orderId,
-        address.email,
-        address.recipientName,
-        total,
-      );
-
-      if (!paymentResult.success) {
-        throw new Error(
-          paymentResult.error || "Failed to create payment session",
-        );
-      }
-
-      // Navigate to payment screen
-      router.push({
-        pathname: "/payment/[orderId]",
-        params: { orderId },
-      });
-=======
       // Get user session
       const {
         data: { session },
@@ -375,10 +336,10 @@ export default function CheckoutScreen() {
       // Clear cart after creating order
       await clearCart();
       await clearGuestAddress();
+      clearAddress();
 
       // Navigate to payment screen with order ID
       router.push(`/payment?orderId=${order.id}`);
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
     } catch (error) {
       console.error("[Checkout] Order creation failed:", error);
 
@@ -394,20 +355,7 @@ export default function CheckoutScreen() {
         isSubmitting.current = false;
       }, 1000);
     }
-  }, [
-    address,
-    userEmail,
-    router,
-<<<<<<< HEAD
-    product,
-    variant,
-    shippingFee,
-    total,
-    selectedPayment,
-=======
-    isLoading,
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
-  ]);
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

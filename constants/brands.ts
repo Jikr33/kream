@@ -8,9 +8,8 @@ export const BRANDS = {
     "https://brandlogos.net/wp-content/uploads/2016/11/salomon_group_2012-2022-logo_brandlogos.net_bqdlb-512x323.png",
   Converse:
     "https://img.logo.dev/converse.com?token=live_6a1a28fd-6420-4492-aeb0-b297461d9de2&size=128&retina=true&format=png",
-  Vans: "https://brandlogos.net/wp-content/uploads/2023/01/vans-logo-512x512.png",
-  Timberland:
-    "https://brandlogos.net/wp-content/uploads/2023/01/timberland-logo-512x512.png",
+  Vans: "https://whatthelogo.com/storage/logos/vans-227580.png",
+  Timberland: "https://whatthelogo.com/storage/logos/timberland-99731.png",
   "Dr. Martens":
     "https://brandlogos.net/wp-content/uploads/2023/01/dr-martens-logo-512x512.png",
   Puma: "https://brandlogos.net/wp-content/uploads/2023/01/puma-logo-512x512.png",

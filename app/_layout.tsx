@@ -1,14 +1,20 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
+import { useEffect } from "react";
 
 import { Colors } from "@/constants/theme";
+import { loadAddressFromStorage } from "@/store/address";
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
 export default function RootLayout() {
+  useEffect(() => {
+    loadAddressFromStorage();
+  }, []);
+
   return (
     <>
       <StatusBar style="dark" />

@@ -1,130 +1,17 @@
 /**
-<<<<<<< HEAD
- * Kream Outlet – Payment Service
- * ===============================
- * Payment-related operations:
- * - Create payment session
- * - Invoke Edge Function
- * - Verify payment
- * - Cancel payment
- * - Retry payment
- * - Get payment status
- * - No UI code
- */
-
-import { supabase } from "@/lib/supabase";
-import type { PaymentResult, Order } from "@/types";
-
-const isSupabaseConfigured =
-  !!process.env.EXPO_PUBLIC_SUPABASE_URL &&
-  !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY &&
-  process.env.EXPO_PUBLIC_SUPABASE_URL !== "your-supabase-project-url";
-
-export async function createPaymentSession(
-  orderId: string,
-  customerEmail: string,
-  customerName: string,
-  amount: number,
-): Promise<PaymentResult> {
-  if (!isSupabaseConfigured) {
-    // Mock response
-    return {
-      success: true,
-      orderId,
-      paymentId: `mock-payment-${Date.now()}`,
-      checkoutUrl: "https://wire.com/checkout/mock",
-    };
-  }
-
-  try {
-    const { data, error } = await supabase.functions.invoke(
-      "create-wire-payment",
-      {
-        body: {
-          order_id: orderId,
-          amount,
-          currency: "MNT",
-          customer_email: customerEmail,
-          customer_name: customerName,
-          success_url: "kream://payment/success",
-          cancel_url: "kream://payment/cancel",
-        },
-      },
-    );
-
-    if (error) {
-      console.error("[Payment] Wire payment error:", error);
-      return {
-        success: false,
-        orderId,
-        error: error.message || "Failed to create payment session",
-      };
-    }
-
-    return {
-      success: true,
-      orderId,
-      paymentId: data.payment_id,
-      checkoutUrl: data.checkout_url,
-    };
-  } catch (error) {
-    console.error("[Payment] Wire payment exception:", error);
-    return {
-      success: false,
-      orderId,
-      error: "Network error. Please try again.",
-    };
-  }
-}
-
-export async function getPaymentStatus(orderId: string): Promise<Order | null> {
-  // Import here to avoid circular dependency
-  const { fetchOrderById } = await import("@/services/orders");
-  return fetchOrderById(orderId);
-}
-
-export async function cancelPayment(orderId: string): Promise<boolean> {
-  // Update order status to cancelled
-  const { updateOrder } = await import("@/services/orders");
-  return updateOrder(orderId, {
-    order_status: "cancelled",
-    payment_status: "cancelled",
-  });
-}
-
-export async function retryPayment(
-  orderId: string,
-  customerEmail: string,
-  customerName: string,
-  amount: number,
-): Promise<PaymentResult> {
-  // Ensure order is in pending_payment status
-  const { updateOrder } = await import("@/services/orders");
-  await updateOrder(orderId, {
-    order_status: "pending_payment",
-    payment_status: "pending",
-  });
-
-  // Create new payment session
-  return createPaymentSession(orderId, customerEmail, customerName, amount);
-=======
  * Payment Service
- * 
- * Handles all payment-related operations with Wire payment gateway.
- * This service communicates with the Supabase Edge Function for payment creation,
- * which in turn communicates with Wire's API.
- * 
- * IMPORTANT: React Native should NEVER communicate directly with Wire's private API.
- * All Wire API calls must go through the Edge Function.
+ *
+ * Client-side payment service that communicates with Supabase Edge Functions.
+ *
+ * IMPORTANT:
+ * - This service ONLY calls Edge Functions
+ * - NEVER exposes Wire API keys to the client
+ * - NEVER creates payments directly
+ * - Payment status is determined by the webhook, not the client
  */
 
 import { supabase } from "@/supabase";
-import type {
-  CreatePaymentRequest,
-  CreatePaymentResponse,
-  PaymentStatus,
-  PaymentStatusResponse,
-} from "@/types";
+import type { CreatePaymentResponse, PaymentStatusResponse } from "@/types";
 
 // ============================================
 // Error Types
@@ -134,7 +21,7 @@ export class PaymentError extends Error {
   constructor(
     message: string,
     public code: string,
-    public statusCode?: number
+    public statusCode?: number,
   ) {
     super(message);
     this.name = "PaymentError";
@@ -147,53 +34,50 @@ export class PaymentError extends Error {
 
 /**
  * Creates a Wire payment session for the given order.
- * 
- * Flow:
- * 1. Edge Function validates the order
- * 2. Creates PaymentIntent with Wire
- * 3. Creates Checkout Session with Wire
- * 4. Returns checkout URL to the app
- * 
+ *
+ * Calls the create-wire-payment Edge Function which:
+ * 1. Validates the order server-side
+ * 2. Recalculates the total server-side
+ * 3. Creates payment with Wire API
+ * 4. Returns checkout URL
+ *
  * @param orderId - The order ID to create payment for
- * @param operatorIds - Allowed payment operators (defaults to sandbox for testing)
  * @returns Checkout URL and payment details
  */
 export async function createPayment(
   orderId: string,
-  operatorIds: string[] = ["sandbox"]
+  operatorIds: string[] = ["sandbox"],
 ): Promise<CreatePaymentResponse> {
-  const request: CreatePaymentRequest = {
-    orderId,
-    operatorIds,
-  };
-
   const { data, error } = await supabase.functions.invoke(
     "create-wire-payment",
     {
-      body: request,
-    }
+      body: {
+        order_id: orderId,
+        operator_ids: operatorIds,
+      },
+    },
   );
 
   if (error) {
-    console.error("[PaymentService] createPayment error:", error);
+    console.error("[Payment] createPayment error:", error);
     throw new PaymentError(
       error.message || "Failed to create payment",
       "PAYMENT_CREATE_FAILED",
-      error.statusCode
+      error.statusCode,
     );
   }
 
   if (!data?.checkoutUrl || !data?.paymentIntentId) {
     throw new PaymentError(
       "Invalid response from payment service",
-      "INVALID_RESPONSE"
+      "INVALID_RESPONSE",
     );
   }
 
   return {
     checkoutUrl: data.checkoutUrl,
     paymentIntentId: data.paymentIntentId,
-    expiresAt: data.expiresAt || Date.now() + 30 * 60 * 1000, // 30 minutes default
+    expiresAt: data.expiresAt,
   };
 }
 
@@ -202,34 +86,35 @@ export async function createPayment(
 // ============================================
 
 /**
- * Checks the current payment status from the server.
- * 
- * This queries the database for the current order payment status,
- * which is updated by the webhook handler.
- * 
+ * Checks the current payment status from the database.
+ *
+ * IMPORTANT: This queries the database for the current order payment status,
+ * which is updated by the webhook handler. The client NEVER determines
+ * payment success locally.
+ *
  * @param orderId - The order ID to check
  * @returns Current payment status
  */
-export async function checkPaymentStatus(
-  orderId: string
+export async function getPaymentStatus(
+  orderId: string,
 ): Promise<PaymentStatusResponse> {
-  const { data: order, error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .select("payment_status, wire_payment_intent_id")
     .eq("id", orderId)
     .single();
 
   if (error) {
-    console.error("[PaymentService] checkPaymentStatus error:", error);
+    console.error("[Payment] getPaymentStatus error:", error);
     throw new PaymentError(
       error.message || "Failed to check payment status",
-      "STATUS_CHECK_FAILED"
+      "STATUS_CHECK_FAILED",
     );
   }
 
   return {
-    status: (order?.payment_status as PaymentStatus) || "pending_payment",
-    paymentIntentId: order?.wire_payment_intent_id || "",
+    status: data?.payment_status || "pending",
+    paymentIntentId: data?.wire_payment_intent_id || "",
   };
 }
 
@@ -239,243 +124,27 @@ export async function checkPaymentStatus(
 
 /**
  * Cancels a pending payment.
- * 
+ *
  * @param orderId - The order ID to cancel payment for
  */
 export async function cancelPayment(orderId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke(
-    "cancel-wire-payment",
-    {
-      body: { orderId },
-    }
-  );
+  // We don't have a separate cancel endpoint, but we can update locally
+  // The webhook will handle the actual cancellation with Wire
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      payment_status: "cancelled",
+      order_status: "cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId)
+    .in("payment_status", ["pending_payment", "processing"]);
 
   if (error) {
-    console.error("[PaymentService] cancelPayment error:", error);
+    console.error("[Payment] cancelPayment error:", error);
     throw new PaymentError(
       error.message || "Failed to cancel payment",
       "PAYMENT_CANCEL_FAILED",
-      error.statusCode
     );
   }
-}
-
-// ============================================
-// Payment Retry
-// ============================================
-
-/**
- * Retries a failed payment by creating a new payment session.
- * 
- * @param orderId - The order ID to retry payment for
- * @returns New checkout URL
- */
-export async function retryPayment(
-  orderId: string
-): Promise<CreatePaymentResponse> {
-  // First check the current status
-  const status = await checkPaymentStatus(orderId);
-  
-  if (status.status === "paid") {
-    throw new PaymentError(
-      "Payment already completed",
-      "ALREADY_PAID"
-    );
-  }
-
-  if (status.status === "processing") {
-    throw new PaymentError(
-      "Payment is currently being processed",
-      "IN_PROGRESS"
-    );
-  }
-
-  // Create a new payment session
-  return createPayment(orderId);
-}
-
-// ============================================
-// Redirect Handling
-// ============================================
-
-/**
- * Parses the return URL from Wire checkout.
- * Extracts payment status and any error information.
- * 
- * @param url - The return URL from Wire
- * @returns Parsed redirect data
- */
-export function parseRedirectUrl(url: string): {
-  status: "success" | "cancelled" | "failed";
-  orderId?: string;
-  errorCode?: string;
-} {
-  try {
-    const parsedUrl = new URL(url);
-    const status = parsedUrl.searchParams.get("status");
-    const orderId = parsedUrl.searchParams.get("order_id") || undefined;
-    const errorCode = parsedUrl.searchParams.get("error_code") || undefined;
-
-    if (status === "success") {
-      return { status: "success", orderId };
-    } else if (status === "cancelled") {
-      return { status: "cancelled", orderId, errorCode };
-    } else {
-      return { status: "failed", orderId, errorCode };
-    }
-  } catch {
-    return { status: "failed" };
-  }
-}
-
-// ============================================
-// Success/Failure Handlers
-// ============================================
-
-/**
- * Handles successful payment redirect.
- * 
- * IMPORTANT: This is for UI purposes only.
- * Actual payment confirmation MUST come from webhook.
- * 
- * @param orderId - The order ID that was paid
- * @returns User-friendly message
- */
-export async function handlePaymentSuccess(orderId: string): Promise<{
-  message: string;
-  status: PaymentStatus;
-}> {
-  // Verify with server (webhook should have updated this)
-  const status = await checkPaymentStatus(orderId);
-  
-  if (status.status === "paid") {
-    return {
-      message: "Payment successful! Your order is being processed.",
-      status: "paid",
-    };
-  }
-
-  // Webhook might be delayed - show pending message
-  if (status.status === "processing") {
-    return {
-      message: "Payment is being verified. You'll receive a confirmation shortly.",
-      status: "processing",
-    };
-  }
-
-  // Fallback - still pending
-  return {
-    message: "Payment received. Final confirmation may take a moment.",
-    status: "pending_payment",
-  };
-}
-
-/**
- * Handles failed payment redirect.
- * 
- * @param orderId - The order ID that failed
- * @param errorCode - Optional error code from Wire
- * @returns User-friendly error message
- */
-export async function handlePaymentFailure(
-  orderId: string,
-  errorCode?: string
-): Promise<{
-  message: string;
-  canRetry: boolean;
-}> {
-  return {
-    message: getErrorMessage(errorCode),
-    canRetry: true,
-  };
-}
-
-/**
- * Handles cancelled payment redirect.
- * 
- * @param orderId - The order ID that was cancelled
- * @returns User-friendly message
- */
-export async function handlePaymentCancelled(
-  orderId: string
-): Promise<{
-  message: string;
-  canRetry: boolean;
-}> {
-  return {
-    message: "Payment was cancelled. You can try again when you're ready.",
-    canRetry: true,
-  };
-}
-
-// ============================================
-// Helper Functions
-// ============================================
-
-function getErrorMessage(errorCode?: string): string {
-  const errorMessages: Record<string, string> = {
-    "insufficient_funds": "Insufficient funds. Please try a different payment method.",
-    "card_declined": "Your card was declined. Please try a different payment method.",
-    "expired_card": "Your card has expired. Please use a different card.",
-    "invalid_card": "Invalid card details. Please check and try again.",
-    "network_error": "A network error occurred. Please check your connection and try again.",
-    "operator_unavailable": "Payment operator is temporarily unavailable. Please try again later.",
-    "timeout": "The payment request timed out. Please try again.",
-  };
-
-  return errorMessages[errorCode || ""] || 
-    "Payment failed. Please try again or use a different payment method.";
-}
-
-// ============================================
-// Utility Functions
-// ============================================
-
-/**
- * Validates that a payment can be initiated for an order.
- * 
- * @param orderId - The order ID to validate
- * @returns true if payment can be initiated
- */
-export async function validatePaymentEligibility(
-  orderId: string
-): Promise<{ eligible: boolean; reason?: string }> {
-  const { data: order, error } = await supabase
-    .from("orders")
-    .select("payment_status, total_amount, shipping_address")
-    .eq("id", orderId)
-    .single();
-
-  if (error || !order) {
-    return { eligible: false, reason: "Order not found" };
-  }
-
-  if (order.payment_status === "paid") {
-    return { eligible: false, reason: "Order already paid" };
-  }
-
-  if (order.payment_status === "processing") {
-    return { eligible: false, reason: "Payment is being processed" };
-  }
-
-  if (order.total_amount <= 0) {
-    return { eligible: false, reason: "Invalid order amount" };
-  }
-
-  if (!order.shipping_address) {
-    return { eligible: false, reason: "Shipping address required" };
-  }
-
-  return { eligible: true };
-}
-
-/**
- * Formats amount in MNT (Mongolian Tugrik) for display.
- * 
- * @param amount - Amount in minor units (smallest currency unit)
- * @returns Formatted string
- */
-export function formatAmount(amount: number): string {
-  return `${amount.toLocaleString("mn-MN")}₮`;
->>>>>>> 9c858a5ddf16a8758fbeeb35e6d0cfde112c95a4
 }

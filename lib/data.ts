@@ -15,18 +15,5 @@ export {
   searchProducts,
   fetchReviews,
 } from "@/services/products";
-export {
-  createOrder,
-  updateOrder,
-  cancelOrder,
-  fetchUserOrders,
-  fetchOrderById,
-  updateShipping,
-} from "@/services/orders";
-export {
-  createPaymentSession,
-  getPaymentStatus,
-  cancelPayment,
-  retryPayment,
-} from "@/services/payment";
+export { createOrder, loadUserOrders, loadOrder } from "@/services/orders";
 export type { PaymentResult } from "@/types";

@@ -1,20 +1,19 @@
 /**
  * Payment Screen
- * 
+ *
  * Displays the Wire hosted checkout in a WebView.
- * 
- * Responsibilities:
- * - Receive orderId from route params
- * - Request payment session from Edge Function
- * - Show loading state while preparing checkout
- * - Render hosted checkout in WebView
- * - Monitor redirect and handle success/failure/cancel
- * - Display appropriate UI states
- * 
+ *
+ * Flow:
+ * 1. Receive orderId from route params
+ * 2. Create payment session via Edge Function
+ * 3. Show WebView with Wire checkout
+ * 4. Poll for payment status
+ * 5. Navigate to success/failure based on webhook-updated status
+ *
  * IMPORTANT:
- * - NO business logic here - only UI and state management
- * - Payment confirmation comes from webhook, not WebView redirects
- * - WebView is only for displaying the hosted checkout
+ * - NO payment verification in client
+ * - Webhook is the source of truth
+ * - Client only polls database for status
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -35,14 +34,13 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Colors, BorderRadius, Spacing } from "@/constants/theme";
 import {
   createPayment,
-  checkPaymentStatus,
+  getPaymentStatus,
   cancelPayment,
   PaymentError,
 } from "@/services/payment";
 import { loadOrder } from "@/services/orders";
-import type { Order } from "@/types";
 
-type PaymentState = 
+type PaymentState =
   | "loading"
   | "ready"
   | "processing"
@@ -53,16 +51,28 @@ type PaymentState =
 export default function PaymentScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
-  
+
   const [state, setState] = useState<PaymentState>("loading");
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [order, setOrder] = useState<Order | null>(null);
-  
-  const webViewRef = useRef<WebView>(null);
-  const hasStartedPayment = useRef(false);
+  const [order, setOrder] =
+    useState<ReturnType<typeof loadOrder> extends Promise<infer R> ? R : never>(
+      null,
+    );
 
-  // Load payment session
+  const webViewRef = useRef<WebView>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Load payment session on mount
   useEffect(() => {
     if (!orderId) {
       setErrorMessage("Order ID is required");
@@ -75,38 +85,65 @@ export default function PaymentScreen() {
 
   // Handle back button
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (state === "processing" || state === "ready") {
-        handleCancel();
-        return true;
-      }
-      return false;
-    });
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (state === "processing" || state === "ready") {
+          handleCancel();
+          return true;
+        }
+        return false;
+      },
+    );
 
     return () => backHandler.remove();
   }, [state]);
 
   // Poll for payment status updates
   useEffect(() => {
-    if (state !== "processing") return;
+    if (state !== "processing" || !orderId) return;
 
-    const pollInterval = setInterval(async () => {
+    // Clear any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+
+    // Poll every 3 seconds, max 2 minutes (40 polls)
+    let pollCount = 0;
+    const maxPolls = 40;
+
+    pollIntervalRef.current = setInterval(async () => {
       try {
-        const status = await checkPaymentStatus(orderId!);
-        
+        pollCount++;
+        const status = await getPaymentStatus(orderId);
+
         if (status.status === "paid") {
-          clearInterval(pollInterval);
+          clearInterval(pollIntervalRef.current!);
           setState("success");
-        } else if (status.status === "failed" || status.status === "cancelled") {
-          clearInterval(pollInterval);
+        } else if (
+          status.status === "failed" ||
+          status.status === "cancelled"
+        ) {
+          clearInterval(pollIntervalRef.current!);
           setState(status.status === "cancelled" ? "cancelled" : "failed");
+        } else if (pollCount >= maxPolls) {
+          // Timeout after 2 minutes
+          clearInterval(pollIntervalRef.current!);
+          setState("failed");
+          setErrorMessage(
+            "Payment verification timed out. Please check your orders.",
+          );
         }
       } catch (error) {
         console.error("[PaymentScreen] Status poll error:", error);
       }
-    }, 3000); // Poll every 3 seconds
+    }, 3000);
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
   }, [state, orderId]);
 
   const loadPaymentSession = async () => {
@@ -119,7 +156,7 @@ export default function PaymentScreen() {
       if (!orderData) {
         throw new Error("Order not found");
       }
-      setOrder(orderData);
+      setOrder(orderData as any);
 
       // Create payment session
       const payment = await createPayment(orderId!);
@@ -127,7 +164,7 @@ export default function PaymentScreen() {
       setState("ready");
     } catch (error) {
       console.error("[PaymentScreen] Failed to load payment session:", error);
-      
+
       if (error instanceof PaymentError) {
         setErrorMessage(error.message);
       } else {
@@ -138,15 +175,15 @@ export default function PaymentScreen() {
   };
 
   const handleCancel = useCallback(async () => {
-    if (state === "processing") {
+    if (state === "processing" && orderId) {
       // Payment is in progress, try to cancel
       try {
-        await cancelPayment(orderId!);
+        await cancelPayment(orderId);
       } catch (error) {
         console.error("[PaymentScreen] Cancel error:", error);
       }
     }
-    
+
     setState("cancelled");
     webViewRef.current?.stopLoading();
   }, [state, orderId]);
@@ -170,16 +207,24 @@ export default function PaymentScreen() {
     const { url } = event;
 
     // Detect if user has returned from Wire checkout
-    // Wire may redirect to success/cancel URLs
-    if (url.includes("status=success") || url.includes("payment_intent.succeeded")) {
+    if (
+      url.includes("status=success") ||
+      url.includes("payment_intent.succeeded")
+    ) {
       // Don't mark as success here - webhook will update the status
       // Just stop loading and show processing state
       setState("processing");
       webViewRef.current?.stopLoading();
-    } else if (url.includes("status=cancelled") || url.includes("payment_intent.canceled")) {
+    } else if (
+      url.includes("status=cancelled") ||
+      url.includes("payment_intent.canceled")
+    ) {
       setState("cancelled");
       webViewRef.current?.stopLoading();
-    } else if (url.includes("status=failed") || url.includes("payment_intent.failed")) {
+    } else if (
+      url.includes("status=failed") ||
+      url.includes("payment_intent.failed")
+    ) {
       setState("failed");
       webViewRef.current?.stopLoading();
     }
@@ -202,37 +247,38 @@ export default function PaymentScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.resultContainer}>
-          <View style={[
-            styles.iconContainer,
-            { backgroundColor: state === "failed" ? "#FEE2E2" : "#FEF3C7" }
-          ]}>
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: state === "failed" ? "#FEE2E2" : "#FEF3C7" },
+            ]}>
             <MaterialIcons
               name={state === "failed" ? "error-outline" : "cancel"}
               size={48}
               color={state === "failed" ? "#DC2626" : "#D97706"}
             />
           </View>
-          
+
           <Text style={styles.resultTitle}>
             {state === "failed" ? "Payment Failed" : "Payment Cancelled"}
           </Text>
-          
+
           <Text style={styles.resultMessage}>
-            {errorMessage || 
-              (state === "cancelled" 
+            {errorMessage ||
+              (state === "cancelled"
                 ? "Your payment was cancelled."
                 : "Something went wrong. Please try again.")}
           </Text>
 
-          {order && (
+          {(order as any) && (
             <View style={styles.orderInfo}>
               <Text style={styles.orderLabel}>Order Total</Text>
               <Text style={styles.orderAmount}>
-                ₮{order.total_amount.toLocaleString("mn-MN")}
+                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
               </Text>
             </View>
           )}
-          
+
           <View style={styles.buttonContainer}>
             {state === "failed" && (
               <TouchableOpacity
@@ -243,7 +289,7 @@ export default function PaymentScreen() {
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             )}
-            
+
             <TouchableOpacity
               style={styles.backButton}
               onPress={state === "cancelled" ? handleGoBack : handleGoToOrders}
@@ -266,22 +312,23 @@ export default function PaymentScreen() {
           <View style={[styles.iconContainer, { backgroundColor: "#D1FAE5" }]}>
             <MaterialIcons name="check-circle" size={48} color="#059669" />
           </View>
-          
+
           <Text style={styles.resultTitle}>Payment Successful!</Text>
-          
+
           <Text style={styles.resultMessage}>
-            Your order is being processed. You will receive a confirmation email shortly.
+            Your order is being processed. You will receive a confirmation email
+            shortly.
           </Text>
 
-          {order && (
+          {(order as any) && (
             <View style={styles.orderInfo}>
               <Text style={styles.orderLabel}>Order Total</Text>
               <Text style={styles.orderAmount}>
-                ₮{order.total_amount.toLocaleString("mn-MN")}
+                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
               </Text>
             </View>
           )}
-          
+
           <TouchableOpacity
             style={styles.viewOrdersButton}
             onPress={handleGoToOrders}
@@ -301,18 +348,18 @@ export default function PaymentScreen() {
           <View style={styles.processingIcon}>
             <ActivityIndicator size="large" color="#3B82F6" />
           </View>
-          
+
           <Text style={styles.resultTitle}>Verifying Payment...</Text>
-          
+
           <Text style={styles.resultMessage}>
             Please wait while we verify your payment. This may take a moment.
           </Text>
 
-          {order && (
+          {(order as any) && (
             <View style={styles.orderInfo}>
               <Text style={styles.orderLabel}>Order Total</Text>
               <Text style={styles.orderAmount}>
-                ₮{order.total_amount.toLocaleString("mn-MN")}
+                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
               </Text>
             </View>
           )}

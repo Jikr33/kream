@@ -35,6 +35,28 @@ type AddressBottomSheetProps = {
   userEmail?: string | null;
 };
 
+const CITIES = [
+  "Ulaanbaatar",
+  "Erdenet",
+  "Darkhan",
+  "Choibalsan",
+  "Khovd",
+  "Uliastai",
+  "Altai",
+  "Murun",
+  "Arvaikheer",
+  "Bayankhongor",
+  "Sainshand",
+  "Dalanzadgad",
+  "Bulgan",
+  "Mandalgovi",
+  "Baruun-Urt",
+  "Undurkhaan",
+  "Zuunmod",
+  "Tsetserleg",
+  "Olgii",
+];
+
 const EMPTY_ADDRESS: AddressData = {
   recipientName: "",
   phoneNumber: "",
@@ -61,6 +83,7 @@ const AddressBottomSheet = memo(function AddressBottomSheet({
   const [errors, setErrors] = useState<
     Partial<Record<keyof AddressData, string>>
   >({});
+  const [showCityPicker, setShowCityPicker] = useState(false);
   const [slideAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
@@ -121,10 +144,6 @@ const AddressBottomSheet = memo(function AddressBottomSheet({
 
     if (!address.streetAddress.trim()) {
       newErrors.streetAddress = "Street address is required";
-    }
-
-    if (!address.postalCode.trim()) {
-      newErrors.postalCode = "Postal code is required";
     }
 
     setErrors(newErrors);
@@ -235,16 +254,86 @@ const AddressBottomSheet = memo(function AddressBottomSheet({
                     />
                   </View>
                   <View style={styles.halfField}>
-                    <FieldInput
-                      label="City"
-                      value={address.city}
-                      onChangeText={(text) => updateField("city", text)}
-                      error={errors.city}
-                      placeholder="City"
-                      autoCapitalize="words"
-                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.citySelector,
+                        errors.city && styles.inputError,
+                      ]}
+                      onPress={() => setShowCityPicker(true)}>
+                      <Text
+                        style={[
+                          styles.citySelectorText,
+                          !address.city && styles.placeholderText,
+                        ]}>
+                        {address.city || "City"}
+                      </Text>
+                      <MaterialIcons
+                        name="expand-more"
+                        size={20}
+                        color="#6B7280"
+                      />
+                    </TouchableOpacity>
+                    {errors.city && (
+                      <Text style={styles.errorText}>{errors.city}</Text>
+                    )}
                   </View>
                 </View>
+
+                <Modal
+                  visible={showCityPicker}
+                  transparent
+                  animationType="fade"
+                  onRequestClose={() => setShowCityPicker(false)}>
+                  <TouchableOpacity
+                    style={styles.cityPickerOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowCityPicker(false)}>
+                    <View style={styles.cityPickerContent}>
+                      <View style={styles.cityPickerHeader}>
+                        <Text style={styles.cityPickerTitle}>Select City</Text>
+                        <TouchableOpacity
+                          onPress={() => setShowCityPicker(false)}>
+                          <MaterialIcons
+                            name="close"
+                            size={24}
+                            color="#6B7280"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <ScrollView style={styles.cityPickerList}>
+                        {CITIES.map((city) => (
+                          <TouchableOpacity
+                            key={city}
+                            style={[
+                              styles.cityPickerItem,
+                              address.city === city &&
+                                styles.cityPickerItemSelected,
+                            ]}
+                            onPress={() => {
+                              updateField("city", city);
+                              setShowCityPicker(false);
+                            }}>
+                            <Text
+                              style={[
+                                styles.cityPickerItemText,
+                                address.city === city &&
+                                  styles.cityPickerItemTextSelected,
+                              ]}>
+                              {city}
+                            </Text>
+                            {address.city === city && (
+                              <MaterialIcons
+                                name="check"
+                                size={20}
+                                color="#111111"
+                              />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </TouchableOpacity>
+                </Modal>
 
                 <FieldInput
                   label="District"
@@ -523,5 +612,84 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: 0.3,
+  },
+  citySelector: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: "400",
+    color: "#111111",
+    letterSpacing: 0.1,
+    borderWidth: 1,
+    borderColor: "#ECECEC",
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  citySelectorText: {
+    fontSize: 15,
+    fontWeight: "400",
+    color: "#111111",
+    letterSpacing: 0.1,
+  },
+  placeholderText: {
+    color: "#9CA3AF",
+  },
+  cityPickerOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: 20,
+  },
+  cityPickerContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    width: "100%",
+    maxHeight: SCREEN_HEIGHT * 0.5,
+    overflow: "hidden",
+  },
+  cityPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#ECECEC",
+  },
+  cityPickerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111111",
+    letterSpacing: 0.3,
+  },
+  cityPickerList: {
+    maxHeight: SCREEN_HEIGHT * 0.4,
+  },
+  cityPickerItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F3F4F6",
+  },
+  cityPickerItemSelected: {
+    backgroundColor: "#F9FAFB",
+  },
+  cityPickerItemText: {
+    fontSize: 15,
+    fontWeight: "400",
+    color: "#111111",
+    letterSpacing: 0.1,
+  },
+  cityPickerItemTextSelected: {
+    fontWeight: "600",
+    color: "#111111",
   },
 });
