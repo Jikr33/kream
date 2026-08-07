@@ -136,29 +136,3 @@ export async function createWireCheckoutSession(params: {
 
   return response.json();
 }
-
-export async function verifyPaymentWithWireAPI(
-  paymentIntentId: string,
-  apiKey: string,
-): Promise<boolean> {
-  try {
-    const response = await fetch(
-      `${WIRE_API_BASE}/payment_intents/${paymentIntentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      },
-    );
-
-    if (!response.ok) {
-      return false;
-    }
-
-    const paymentIntent = await response.json();
-    return paymentIntent.status === "succeeded";
-  } catch (error) {
-    console.error("[Wire API] Verification error:", error);
-    return false;
-  }
-}
