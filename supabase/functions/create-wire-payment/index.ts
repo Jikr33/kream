@@ -11,6 +11,8 @@
  * - Returns checkout URL to client
  */
 
+/// <reference lib="deno.unstable" />
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   createWirePaymentIntent,
@@ -106,35 +108,20 @@ Deno.serve(async (req: Request) => {
     }
 
     // Validate order status
-    if (order.payment_status !== "pending_payment") {
+    if (order.status !== "pending") {
       throw new PaymentError(
-        `Order cannot accept payment (status: ${order.payment_status})`,
+        `Order cannot accept payment (status: ${order.status})`,
         "INVALID_ORDER_STATUS",
         400,
       );
     }
 
-    // Server-side price validation (never trust client)
-    const productSnapshot = order.product_snapshot;
-    const shippingSnapshot = order.shipping_snapshot;
-    const subtotal = productSnapshot.price * productSnapshot.quantity;
-    const platformFee = Math.round(subtotal * 0.03);
-    const expectedTotal = subtotal + platformFee + shippingSnapshot.fee;
-
-    if (order.total_amount !== expectedTotal) {
-      throw new PaymentError(
-        "Order total mismatch",
-        "PRICE_TAMPERING_DETECTED",
-        400,
-      );
-    }
-
     // Check if payment already exists (idempotency)
-    if (order.wire_payment_intent_id) {
+    if (order.wire_transaction_id) {
       return Response.json(
         {
-          checkoutUrl: `https://pay.wire.mn/c/${order.wire_payment_intent_id}`,
-          paymentIntentId: order.wire_payment_intent_id,
+          checkoutUrl: `https://pay.wire.mn/c/${order.wire_transaction_id}`,
+          paymentIntentId: order.wire_transaction_id,
           expiresAt: Date.now() + 30 * 60 * 1000,
         },
         { headers: corsHeaders },
@@ -146,8 +133,8 @@ Deno.serve(async (req: Request) => {
 
     // Create payment intent with Wire
     const paymentIntent = await createWirePaymentIntent({
-      amount: order.total_amount,
-      description: `Kream Order: ${productSnapshot.name} x${productSnapshot.quantity}`,
+      amount: order.total,
+      description: `Kream Order: ${order.product_snapshot.name} x${order.quantity}`,
       allowedOperators: body.operatorIds || ["sandbox"],
       idempotencyKey,
       metadata: {
@@ -171,9 +158,8 @@ Deno.serve(async (req: Request) => {
     const { error: updateError } = await supabaseAdmin
       .from("orders")
       .update({
-        wire_payment_intent_id: paymentIntent.id,
-        wire_checkout_url: checkoutSession.url,
-        payment_status: "processing",
+        wire_transaction_id: paymentIntent.id,
+        status: "processing",
         updated_at: new Date().toISOString(),
       })
       .eq("id", body.orderId);

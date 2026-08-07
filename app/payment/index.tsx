@@ -4,19 +4,19 @@
  * Displays the Wire hosted checkout in a WebView.
  *
  * Flow:
- * 1. Receive orderId from route params
- * 2. Create payment session via Edge Function
- * 3. Show WebView with Wire checkout
- * 4. Poll for payment status
- * 5. Navigate to success/failure based on webhook-updated status
+ * 1. Receive orderId and paymentUrl from route params
+ * 2. Show WebView with Wire checkout
+ * 3. User completes payment in WebView
+ * 4. Webhook updates order status in database
  *
  * IMPORTANT:
- * - NO payment verification in client
+ * - NO client-side payment verification
+ * - NO polling for status
  * - Webhook is the source of truth
- * - Client only polls database for status
+ * - Client only displays the payment URL
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -25,70 +25,32 @@ import {
   ActivityIndicator,
   BackHandler,
   Platform,
-  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { Colors, BorderRadius, Spacing } from "@/constants/theme";
-import {
-  createPayment,
-  getPaymentStatus,
-  cancelPayment,
-  PaymentError,
-} from "@/services/payment";
-import { loadOrder } from "@/services/orders";
 
-type PaymentState =
-  | "loading"
-  | "ready"
-  | "processing"
-  | "success"
-  | "cancelled"
-  | "failed";
+type PaymentState = "loading" | "ready" | "cancelled" | "failed";
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { orderId } = useLocalSearchParams<{ orderId: string }>();
+  const { orderId, paymentUrl } = useLocalSearchParams<{
+    orderId: string;
+    paymentUrl: string;
+  }>();
 
   const [state, setState] = useState<PaymentState>("loading");
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [order, setOrder] =
-    useState<ReturnType<typeof loadOrder> extends Promise<infer R> ? R : never>(
-      null,
-    );
-
   const webViewRef = useRef<WebView>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // Load payment session on mount
-  useEffect(() => {
-    if (!orderId) {
-      setErrorMessage("Order ID is required");
-      setState("failed");
-      return;
-    }
-
-    loadPaymentSession();
-  }, [orderId]);
 
   // Handle back button
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        if (state === "processing" || state === "ready") {
+        if (state === "ready") {
           handleCancel();
           return true;
         }
@@ -99,99 +61,20 @@ export default function PaymentScreen() {
     return () => backHandler.remove();
   }, [state]);
 
-  // Poll for payment status updates
+  // Initialize payment
   useEffect(() => {
-    if (state !== "processing" || !orderId) return;
-
-    // Clear any existing interval
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
-
-    // Poll every 3 seconds, max 2 minutes (40 polls)
-    let pollCount = 0;
-    const maxPolls = 40;
-
-    pollIntervalRef.current = setInterval(async () => {
-      try {
-        pollCount++;
-        const status = await getPaymentStatus(orderId);
-
-        if (status.status === "paid") {
-          clearInterval(pollIntervalRef.current!);
-          setState("success");
-        } else if (
-          status.status === "failed" ||
-          status.status === "cancelled"
-        ) {
-          clearInterval(pollIntervalRef.current!);
-          setState(status.status === "cancelled" ? "cancelled" : "failed");
-        } else if (pollCount >= maxPolls) {
-          // Timeout after 2 minutes
-          clearInterval(pollIntervalRef.current!);
-          setState("failed");
-          setErrorMessage(
-            "Payment verification timed out. Please check your orders.",
-          );
-        }
-      } catch (error) {
-        console.error("[PaymentScreen] Status poll error:", error);
-      }
-    }, 3000);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [state, orderId]);
-
-  const loadPaymentSession = async () => {
-    try {
-      setState("loading");
-      setErrorMessage(null);
-
-      // Load order for display
-      const orderData = await loadOrder(orderId!);
-      if (!orderData) {
-        throw new Error("Order not found");
-      }
-      setOrder(orderData as any);
-
-      // Create payment session
-      const payment = await createPayment(orderId!);
-      setCheckoutUrl(payment.checkoutUrl);
-      setState("ready");
-    } catch (error) {
-      console.error("[PaymentScreen] Failed to load payment session:", error);
-
-      if (error instanceof PaymentError) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Failed to initialize payment. Please try again.");
-      }
+    if (!orderId || !paymentUrl) {
+      setErrorMessage("Missing payment information");
       setState("failed");
-    }
-  };
-
-  const handleCancel = useCallback(async () => {
-    if (state === "processing" && orderId) {
-      // Payment is in progress, try to cancel
-      try {
-        await cancelPayment(orderId);
-      } catch (error) {
-        console.error("[PaymentScreen] Cancel error:", error);
-      }
+      return;
     }
 
+    setState("ready");
+  }, [orderId, paymentUrl]);
+
+  const handleCancel = useCallback(() => {
     setState("cancelled");
     webViewRef.current?.stopLoading();
-  }, [state, orderId]);
-
-  const handleRetry = useCallback(() => {
-    setState("loading");
-    setErrorMessage(null);
-    loadPaymentSession();
   }, []);
 
   const handleGoBack = useCallback(() => {
@@ -208,14 +91,6 @@ export default function PaymentScreen() {
 
     // Detect if user has returned from Wire checkout
     if (
-      url.includes("status=success") ||
-      url.includes("payment_intent.succeeded")
-    ) {
-      // Don't mark as success here - webhook will update the status
-      // Just stop loading and show processing state
-      setState("processing");
-      webViewRef.current?.stopLoading();
-    } else if (
       url.includes("status=cancelled") ||
       url.includes("payment_intent.canceled")
     ) {
@@ -231,72 +106,36 @@ export default function PaymentScreen() {
   }, []);
 
   // Render loading state
-  if (state === "loading") {
+  if (state === "loading" || !paymentUrl) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#111111" />
-          <Text style={styles.loadingText}>Preparing payment...</Text>
+          <Text style={styles.loadingText}>Loading payment...</Text>
         </View>
       </View>
     );
   }
 
-  // Render error state
-  if (state === "failed" || state === "cancelled") {
+  // Render cancelled state
+  if (state === "cancelled") {
     return (
       <View style={styles.container}>
         <View style={styles.resultContainer}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: state === "failed" ? "#FEE2E2" : "#FEF3C7" },
-            ]}>
-            <MaterialIcons
-              name={state === "failed" ? "error-outline" : "cancel"}
-              size={48}
-              color={state === "failed" ? "#DC2626" : "#D97706"}
-            />
+          <View style={[styles.iconContainer, { backgroundColor: "#FEF3C7" }]}>
+            <MaterialIcons name="cancel" size={48} color="#D97706" />
           </View>
 
-          <Text style={styles.resultTitle}>
-            {state === "failed" ? "Payment Failed" : "Payment Cancelled"}
-          </Text>
+          <Text style={styles.resultTitle}>Payment Cancelled</Text>
 
-          <Text style={styles.resultMessage}>
-            {errorMessage ||
-              (state === "cancelled"
-                ? "Your payment was cancelled."
-                : "Something went wrong. Please try again.")}
-          </Text>
-
-          {(order as any) && (
-            <View style={styles.orderInfo}>
-              <Text style={styles.orderLabel}>Order Total</Text>
-              <Text style={styles.orderAmount}>
-                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
-              </Text>
-            </View>
-          )}
+          <Text style={styles.resultMessage}>Your payment was cancelled.</Text>
 
           <View style={styles.buttonContainer}>
-            {state === "failed" && (
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={handleRetry}
-                activeOpacity={0.8}>
-                <MaterialIcons name="refresh" size={20} color="#FFFFFF" />
-                <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
-            )}
-
             <TouchableOpacity
               style={styles.backButton}
-              onPress={state === "cancelled" ? handleGoBack : handleGoToOrders}
+              onPress={handleGoBack}
               activeOpacity={0.7}>
-              <Text style={styles.backButtonText}>
-                {state === "cancelled" ? "Back to Checkout" : "View Orders"}
-              </Text>
+              <Text style={styles.backButtonText}>Back to Checkout</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -304,121 +143,68 @@ export default function PaymentScreen() {
     );
   }
 
-  // Render success state
-  if (state === "success") {
+  // Render failed state
+  if (state === "failed") {
     return (
       <View style={styles.container}>
         <View style={styles.resultContainer}>
-          <View style={[styles.iconContainer, { backgroundColor: "#D1FAE5" }]}>
-            <MaterialIcons name="check-circle" size={48} color="#059669" />
+          <View style={[styles.iconContainer, { backgroundColor: "#FEE2E2" }]}>
+            <MaterialIcons name="error-outline" size={48} color="#DC2626" />
           </View>
 
-          <Text style={styles.resultTitle}>Payment Successful!</Text>
+          <Text style={styles.resultTitle}>Payment Failed</Text>
 
           <Text style={styles.resultMessage}>
-            Your order is being processed. You will receive a confirmation email
-            shortly.
+            {errorMessage || "Something went wrong. Please try again."}
           </Text>
 
-          {(order as any) && (
-            <View style={styles.orderInfo}>
-              <Text style={styles.orderLabel}>Order Total</Text>
-              <Text style={styles.orderAmount}>
-                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.viewOrdersButton}
-            onPress={handleGoToOrders}
-            activeOpacity={0.8}>
-            <Text style={styles.viewOrdersButtonText}>View My Orders</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  // Render processing state
-  if (state === "processing") {
-    return (
-      <View style={styles.container}>
-        <View style={styles.resultContainer}>
-          <View style={styles.processingIcon}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleGoToOrders}
+              activeOpacity={0.7}>
+              <Text style={styles.backButtonText}>View Orders</Text>
+            </TouchableOpacity>
           </View>
-
-          <Text style={styles.resultTitle}>Verifying Payment...</Text>
-
-          <Text style={styles.resultMessage}>
-            Please wait while we verify your payment. This may take a moment.
-          </Text>
-
-          {(order as any) && (
-            <View style={styles.orderInfo}>
-              <Text style={styles.orderLabel}>Order Total</Text>
-              <Text style={styles.orderAmount}>
-                ₮{(order as any).total_amount.toLocaleString("mn-MN")}
-              </Text>
-            </View>
-          )}
         </View>
       </View>
     );
   }
 
   // Render WebView for checkout
-  if (state === "ready" && checkoutUrl) {
-    return (
-      <View style={styles.webviewContainer}>
-        {/* Header */}
-        <View style={styles.webviewHeader}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleCancel}
-            activeOpacity={0.7}>
-            <MaterialIcons name="close" size={24} color="#111111" />
-          </TouchableOpacity>
-          <Text style={styles.webviewTitle}>Payment</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        {/* WebView */}
-        <WebView
-          ref={webViewRef}
-          source={{ uri: checkoutUrl }}
-          style={styles.webview}
-          onNavigationStateChange={handleNavigation}
-          startInLoadingState
-          renderLoading={() => (
-            <View style={styles.webviewLoading}>
-              <ActivityIndicator size="large" color="#111111" />
-              <Text style={styles.webviewLoadingText}>Loading checkout...</Text>
-            </View>
-          )}
-          allowsBackForwardNavigationGestures
-          allowsInlineMediaPlayback
-          javaScriptEnabled
-          domStorageEnabled
-          sharedCookiesEnabled
-        />
-      </View>
-    );
-  }
-
-  // Fallback
   return (
-    <View style={styles.container}>
-      <View style={styles.resultContainer}>
-        <Text style={styles.resultTitle}>Something went wrong</Text>
+    <View style={styles.webviewContainer}>
+      {/* Header */}
+      <View style={styles.webviewHeader}>
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleGoBack}
+          style={styles.closeButton}
+          onPress={handleCancel}
           activeOpacity={0.7}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+          <MaterialIcons name="close" size={24} color="#111111" />
         </TouchableOpacity>
+        <Text style={styles.webviewTitle}>Payment</Text>
+        <View style={styles.placeholder} />
       </View>
+
+      {/* WebView */}
+      <WebView
+        ref={webViewRef}
+        source={{ uri: paymentUrl }}
+        style={styles.webview}
+        onNavigationStateChange={handleNavigation}
+        startInLoadingState
+        renderLoading={() => (
+          <View style={styles.webviewLoading}>
+            <ActivityIndicator size="large" color="#111111" />
+            <Text style={styles.webviewLoadingText}>Loading checkout...</Text>
+          </View>
+        )}
+        allowsBackForwardNavigationGestures
+        allowsInlineMediaPlayback
+        javaScriptEnabled
+        domStorageEnabled
+        sharedCookiesEnabled
+      />
     </View>
   );
 }
@@ -426,7 +212,7 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F8F7F4",
   },
   loadingContainer: {
     flex: 1,
@@ -453,15 +239,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.lg,
   },
-  processingIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#DBEAFE",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-  },
   resultTitle: {
     fontSize: 22,
     fontWeight: "700",
@@ -476,44 +253,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: Spacing.lg,
   },
-  orderInfo: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-    width: "100%",
-    maxWidth: 200,
-  },
-  orderLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 4,
-  },
-  orderAmount: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111111",
-  },
   buttonContainer: {
     width: "100%",
     maxWidth: 280,
     gap: Spacing.sm,
-  },
-  retryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#111111",
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-  },
-  retryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
   },
   backButton: {
     alignItems: "center",
@@ -527,20 +270,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#111111",
-  },
-  viewOrdersButton: {
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: BorderRadius.md,
-    backgroundColor: "#111111",
-    width: "100%",
-    maxWidth: 280,
-  },
-  viewOrdersButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
   },
   webviewContainer: {
     flex: 1,

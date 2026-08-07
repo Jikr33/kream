@@ -107,7 +107,7 @@ export default function SneakerDetailScreen() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, []);
 
   const handleShare = useCallback(async () => {
     if (!sneaker) return;

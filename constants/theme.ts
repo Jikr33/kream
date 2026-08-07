@@ -17,7 +17,7 @@ import { Platform } from "react-native";
 export const Colors = {
   light: {
     // Base
-    background: "#FAFAF8", // Primary background - warmer white
+    background: "#F8F7F4", // Primary background - warmer white
     backgroundSecondary: "#F5F5F4", // Secondary background
     card: "#FFFFFF", // Cards - pure white
 

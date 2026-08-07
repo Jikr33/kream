@@ -2,9 +2,8 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "dom"],
     "moduleResolution": "bundler",
-    "types": ["https://deno.land/x/typesupabase_v2@0.1.0/typesupabase.d.ts"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,

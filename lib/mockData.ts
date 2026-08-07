@@ -6,7 +6,7 @@
  * when Supabase is not configured or returns errors.
  */
 
-import type { Order, OrderItem, Product, Review } from "@/types";
+import type { Order, OrderItem, Product, Review, AddressData } from "@/types";
 import {
   BRANDS,
   getBrandName as getBrandNameFromRegistry,
@@ -402,34 +402,106 @@ export const mockReviews: Review[] = [
   },
 ];
 
+const address1: AddressData = {
+  recipientName: "John Doe",
+  phoneNumber: "+976 99123456",
+  email: "john@example.com",
+  country: "Mongolia",
+  city: "Ulaanbaatar",
+  district: "Soningon",
+  streetAddress: "12-r khoroo",
+  postalCode: "210101",
+  deliveryInstructions: "Leave at security desk",
+};
+
+const address2: AddressData = {
+  recipientName: "Jane Doe",
+  phoneNumber: "+976 99123457",
+  email: "jane@example.com",
+  country: "Mongolia",
+  city: "Ulaanbaatar",
+  district: "Soningon",
+  streetAddress: "12-r khoroo",
+  postalCode: "210101",
+  deliveryInstructions: "Call before arrival",
+};
+
+const address3: AddressData = {
+  recipientName: "Bob Smith",
+  phoneNumber: "+976 99123458",
+  email: "bob@example.com",
+  country: "Mongolia",
+  city: "Erdenet",
+  district: "Tsetserleg",
+  streetAddress: "5-r building",
+  postalCode: "210201",
+  deliveryInstructions: "Ring doorbell",
+};
+
 export const mockOrders: Order[] = [
   {
     id: "order-1",
     user_id: "user-1",
-    total_amount: 265000,
-    status: "delivered",
-    payment_method: "cod",
-    shipping_address: "Улаанбатор, Сонингон, 12-р хороолол",
+    product_snapshot: {
+      productId: "product-1",
+      brandId: "nike",
+      name: "Air Force 1 Low",
+      imageUrl: null,
+    },
+    selected_size: "10",
+    selected_color: "White",
+    quantity: 1,
+    subtotal: 120000,
+    shipping_fee: 3500,
+    total: 265000,
+    wire_transaction_id: null,
+    status: "completed",
+    shipping_address: address1,
+    completed_at: "2024-06-20T14:00:00Z",
     created_at: "2024-06-15T10:30:00Z",
     updated_at: "2024-06-20T14:00:00Z",
   },
   {
     id: "order-2",
     user_id: "user-1",
-    total_amount: 85000,
-    status: "shipped",
-    payment_method: "cod",
-    shipping_address: "Улаанбатор, Сонингон, 12-р хороолол",
+    product_snapshot: {
+      productId: "product-3",
+      brandId: "new_balance",
+      name: "New Balance 550",
+      imageUrl: null,
+    },
+    selected_size: "9",
+    selected_color: "Grey",
+    quantity: 1,
+    subtotal: 85000,
+    shipping_fee: 0,
+    total: 85000,
+    wire_transaction_id: null,
+    status: "shipping",
+    shipping_address: address2,
+    completed_at: null,
     created_at: "2024-06-28T09:00:00Z",
     updated_at: "2024-06-29T16:00:00Z",
   },
   {
     id: "order-3",
     user_id: "user-2",
-    total_amount: 45000,
+    product_snapshot: {
+      productId: "product-8",
+      brandId: "converse",
+      name: "Chuck Taylor All Star",
+      imageUrl: null,
+    },
+    selected_size: "9",
+    selected_color: "Red",
+    quantity: 1,
+    subtotal: 45000,
+    shipping_fee: 0,
+    total: 45000,
+    wire_transaction_id: null,
     status: "pending",
-    payment_method: "cod",
-    shipping_address: "Эрдэнэт, Цэцгийн гудамж, 5-р байр",
+    shipping_address: address3,
+    completed_at: null,
     created_at: "2024-07-01T12:00:00Z",
     updated_at: "2024-07-01T12:00:00Z",
   },

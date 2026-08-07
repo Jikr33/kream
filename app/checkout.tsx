@@ -14,6 +14,13 @@
  * - Order status is updated by the webhook
  */
 
+import {
+  getAddress,
+  setAddress as setGlobalAddress,
+  clearAddress,
+  loadAddressFromStorage,
+  type UserAddress,
+} from "@/store/address";
 import React, {
   useState,
   useCallback,
@@ -59,13 +66,46 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
 import { createOrder, OrderError } from "@/services/orders";
-import {
-  getAddress,
-  setAddress as setGlobalAddress,
-  clearAddress,
-  loadAddressFromStorage,
-  type UserAddress,
-} from "@/store/address";
+
+// ============================================
+// Payment (Direct Edge Function Call)
+// ============================================
+
+interface CreatePaymentResponse {
+  checkoutUrl: string;
+  paymentIntentId: string;
+  expiresAt: number;
+}
+
+async function createPayment(
+  orderId: string,
+  operatorIds: string[] = ["sandbox"],
+): Promise<CreatePaymentResponse> {
+  const { data, error } = await supabase.functions.invoke(
+    "create-wire-payment",
+    {
+      body: {
+        order_id: orderId,
+        operator_ids: operatorIds,
+      },
+    },
+  );
+
+  if (error) {
+    console.error("[Checkout] createPayment error:", error);
+    throw new Error(error.message || "Failed to create payment");
+  }
+
+  if (!data?.checkoutUrl || !data?.paymentIntentId) {
+    throw new Error("Invalid response from payment service");
+  }
+
+  return {
+    checkoutUrl: data.checkoutUrl,
+    paymentIntentId: data.paymentIntentId,
+    expiresAt: data.expiresAt,
+  };
+}
 
 type ProductVariant = {
   size: string;
@@ -162,11 +202,8 @@ export default function CheckoutScreen() {
 
   const loadSavedData = useCallback(async () => {
     try {
-      console.log("[Checkout] loadSavedData started");
       await loadAddressFromStorage();
-      console.log("[Checkout] loadAddressFromStorage completed");
       const globalAddressData = getAddress();
-      console.log("[Checkout] getAddress returned:", globalAddressData);
       if (globalAddressData) {
         setAddress({
           recipientName: globalAddressData.name,
@@ -289,13 +326,38 @@ export default function CheckoutScreen() {
       return;
     }
 
-    // Validate address
-    if (!address) {
+    // Read current address at call time to avoid stale closure
+    const currentAddress = getAddress();
+    const displayAddress = currentAddress
+      ? {
+          name: currentAddress.name,
+          phone: currentAddress.phone,
+          email: currentAddress.email,
+          city: currentAddress.city,
+          district: currentAddress.district,
+          street: currentAddress.street,
+          postalCode: currentAddress.postalCode || "",
+          deliveryInstructions: currentAddress.deliveryInstructions,
+        }
+      : address
+        ? {
+            name: address.recipientName,
+            phone: address.phoneNumber,
+            email: address.email,
+            city: address.city,
+            district: address.district,
+            street: address.streetAddress,
+            postalCode: address.postalCode || "",
+            deliveryInstructions: address.deliveryInstructions,
+          }
+        : null;
+
+    if (!displayAddress) {
       setShowAddressSheet(true);
       return;
     }
 
-    if (!userEmail && !address.email) {
+    if (!userEmail && !displayAddress.email) {
       Alert.alert(
         "Email Required",
         "Please provide an email address for order confirmation.",
@@ -312,34 +374,46 @@ export default function CheckoutScreen() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
+      const userId = session?.user?.id ?? null;
 
-      // Create order with pending_payment status
-      const order = await createOrder({
-        userId,
-        product: {
-          id: product.id || `${product.brand_id}-${product.name}`,
-          brandId: product.brand_id,
-          name: product.name,
-          price: product.price,
-          size: variant.size,
-          color: variant.color,
+      // Create order via Edge Function (server-side validation and price calculation)
+      const response = await supabase.functions.invoke("create-order", {
+        body: {
+          productId: product.id,
+          selectedSize: variant.size,
+          selectedColor: variant.color,
           quantity: variant.quantity,
-          imageUrl: product.thumb,
+          shippingMethod,
+          shippingAddress: displayAddress,
         },
-        shipping: {
-          method: shippingMethod,
-        },
-        address,
       });
+
+      if (response.error || !response.data?.success) {
+        const errorMessage =
+          response.error?.message ||
+          response.data?.error?.message ||
+          "Failed to create order";
+        const errorCode = response.data?.error?.code || "ORDER_CREATE_FAILED";
+        throw new OrderError(
+          errorMessage,
+          errorCode,
+          response.data?.error?.statusCode || 400,
+        );
+      }
+
+      const order = response.data.order;
 
       // Clear cart after creating order
       await clearCart();
       await clearGuestAddress();
-      clearAddress();
 
-      // Navigate to payment screen with order ID
-      router.push(`/payment?orderId=${order.id}`);
+      // Create payment session via Edge Function
+      const payment = await createPayment(order.id);
+
+      // Navigate to payment screen with order ID and payment URL
+      router.push(
+        `/payment?orderId=${order.id}&paymentUrl=${encodeURIComponent(payment.checkoutUrl)}`,
+      );
     } catch (error) {
       console.error("[Checkout] Order creation failed:", error);
 
@@ -355,7 +429,7 @@ export default function CheckoutScreen() {
         isSubmitting.current = false;
       }, 1000);
     }
-  }, []);
+  }, [isLoading, userEmail, product, variant, shippingMethod, address, router]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -470,7 +544,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F8F7F4",
   },
   flex: {
     flex: 1,
@@ -480,7 +554,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F8F7F4",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#ECECEC",
     minHeight: 44,

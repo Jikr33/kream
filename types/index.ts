@@ -62,11 +62,13 @@ export type PaymentStatus =
   | "expired";
 
 export type OrderStatus =
-  | "pending_payment"
+  | "pending"
+  | "paid"
   | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+  | "shipping"
+  | "completed"
+  | "cancelled"
+  | "failed";
 
 export type PaymentProvider = "wire" | "stripe" | "paypal";
 
@@ -82,6 +84,13 @@ export type PaymentMethod = {
 // Order Types
 // ============================================
 
+export type ProductSnapshot = {
+  productId: string;
+  brandId: string;
+  name: string;
+  imageUrl: string | null;
+};
+
 export type AddressData = {
   recipientName: string;
   phoneNumber: string;
@@ -95,45 +104,25 @@ export type AddressData = {
   deliveryInstructions: string;
 };
 
-export type ShippingSnapshot = {
-  method: "standard" | "express";
-  fee: number;
-  estimatedDays: string;
-};
-
-export type ProductSnapshot = {
-  productId: string;
-  brandId: string;
-  name: string;
-  price: number;
-  size: string;
-  color: string;
-  quantity: number;
-  imageUrl: string | null;
-};
-
 export type Order = {
   id: string;
   user_id: string | null;
   // Product snapshot
   product_snapshot: ProductSnapshot;
-  // Shipping snapshot
-  shipping_snapshot: ShippingSnapshot;
+  selected_size: string;
+  selected_color: string;
+  quantity: number;
   // Pricing
   subtotal: number;
-  platform_fee: number;
   shipping_fee: number;
-  total_amount: number;
-  // Status
-  payment_status: PaymentStatus;
-  order_status: OrderStatus;
+  total: number;
   // Payment info
-  payment_method: string | null;
-  payment_provider: "wire" | null;
-  wire_payment_intent_id: string | null;
-  wire_checkout_url: string | null;
-  // Metadata
+  wire_transaction_id: string | null;
+  // Status
+  status: OrderStatus;
+  // Address
   shipping_address: AddressData;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -145,60 +134,6 @@ export type OrderItem = {
   quantity: number;
   price: number;
   created_at?: string | null;
-};
-
-// ============================================
-// Payment Request/Response Types
-// ============================================
-
-export type CreatePaymentRequest = {
-  orderId: string;
-  operatorIds?: string[];
-  returnUrl?: string;
-  cancelUrl?: string;
-};
-
-export type CreatePaymentResponse = {
-  checkoutUrl: string;
-  paymentIntentId: string;
-  expiresAt: number;
-};
-
-export type PaymentStatusResponse = {
-  status: PaymentStatus;
-  paymentIntentId: string;
-  message?: string;
-};
-
-export type WirePaymentSession = {
-  checkout_url: string;
-  payment_id: string;
-  expires_at: string;
-};
-
-export type CreateOrderInput = {
-  user_id?: string | null;
-  product_id: string;
-  product_name: string;
-  product_image?: string | null;
-  selected_size: string;
-  selected_color: string;
-  quantity: number;
-  subtotal: number;
-  shipping_fee: number;
-  total: number;
-  currency: string;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_email: string;
-  shipping_address: string;
-  shipping_city: string;
-  shipping_district: string;
-  shipping_postal: string;
-  payment_provider: PaymentProvider;
-  payment_method: string;
-  coupon_id?: string | null;
-  coupon_discount?: number;
 };
 
 export type OrderWithItems = Order & {

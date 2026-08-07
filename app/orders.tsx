@@ -1,6 +1,6 @@
 /**
  * Orders Screen
- * 
+ *
  * Displays user's order history.
  * Uses the orders service for data loading.
  */
@@ -21,8 +21,9 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
 import { supabase } from "@/supabase";
-import { loadUserOrders, formatOrderStatus, formatPaymentStatus, getPaymentStatusColor } from "@/services/orders";
-import type { Order } from "@/types";
+import { loadUserOrders } from "@/services/orders";
+import { formatOrderStatus, getStatusColor } from "@/utils/order";
+import type { Order } from "@/types/order";
 
 export default function OrdersScreen() {
   const router = useRouter();
@@ -39,12 +40,12 @@ export default function OrdersScreen() {
   const loadOrders = async () => {
     try {
       setError(null);
-      
+
       // Get current user
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      
+
       if (!session?.user) {
         setOrders([]);
         setIsLoading(false);
@@ -78,31 +79,11 @@ export default function OrdersScreen() {
   };
 
   const getOrderDisplayStatus = (order: Order) => {
-    // Show order status for fulfilled orders, payment status for pending
-    if (order.order_status === "processing" || 
-        order.order_status === "shipped" || 
-        order.order_status === "delivered") {
-      return formatOrderStatus(order.order_status);
-    }
-    return formatPaymentStatus(order.payment_status);
+    return formatOrderStatus(order.status);
   };
 
-  const getStatusColor = (order: Order) => {
-    if (order.order_status === "processing" || 
-        order.order_status === "shipped" || 
-        order.order_status === "delivered") {
-      switch (order.order_status) {
-        case "processing":
-          return "#3B82F6"; // Blue
-        case "shipped":
-          return "#8B5CF6"; // Purple
-        case "delivered":
-          return Colors.light.success;
-        default:
-          return Colors.light.textTertiary;
-      }
-    }
-    return getPaymentStatusColor(order.payment_status);
+  const getBadgeColor = (order: Order) => {
+    return getStatusColor(order.status);
   };
 
   if (isLoading) {
@@ -158,8 +139,8 @@ export default function OrdersScreen() {
           </View>
         ) : (
           orders.map((order) => (
-            <TouchableOpacity 
-              key={order.id} 
+            <TouchableOpacity
+              key={order.id}
               style={styles.orderCard}
               activeOpacity={0.7}>
               <View style={styles.orderHeader}>
@@ -174,7 +155,7 @@ export default function OrdersScreen() {
                 <View
                   style={[
                     styles.statusBadge,
-                    { backgroundColor: getStatusColor(order) },
+                    { backgroundColor: getBadgeColor(order) },
                   ]}>
                   <Text style={styles.statusText}>
                     {getOrderDisplayStatus(order)}
@@ -189,7 +170,8 @@ export default function OrdersScreen() {
                   {order.product_snapshot.name}
                 </Text>
                 <Text style={styles.productDetails}>
-                  {order.product_snapshot.size} / {order.product_snapshot.color} / x{order.product_snapshot.quantity}
+                  {order.selected_size} / {order.selected_color} / x
+                  {order.quantity}
                 </Text>
               </View>
 
@@ -197,10 +179,11 @@ export default function OrdersScreen() {
 
               <View style={styles.orderContent}>
                 <Text style={styles.orderItems}>
-                  {order.product_snapshot.quantity} item{order.product_snapshot.quantity > 1 ? 's' : ''}
+                  {order.quantity} item
+                  {order.quantity > 1 ? "s" : ""}
                 </Text>
                 <Text style={styles.orderTotal}>
-                  ₮{order.total_amount.toLocaleString("mn-MN")}
+                  ₮{order.total.toLocaleString("mn-MN")}
                 </Text>
               </View>
             </TouchableOpacity>

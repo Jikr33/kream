@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifySignature } from "../shared/verify.ts";
+import type { WireWebhookEvent } from "../shared/wire.ts";
 
 // ============================================
 // Configuration
@@ -22,30 +23,6 @@ const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const WEBHOOK_SECRET = Deno.env.get("WIRE_WEBHOOK_SECRET") || "";
 const WIRE_API_KEY = Deno.env.get("WIRE_SECRET_KEY") || "";
-
-// ============================================
-// Types
-// ============================================
-
-interface WireWebhookEvent {
-  id: string;
-  object: "event";
-  type:
-    | "payment_intent.succeeded"
-    | "payment_intent.failed"
-    | "payment_intent.canceled";
-  created: number;
-  data: {
-    object: {
-      id: string;
-      object: string;
-      amount: number;
-      currency: string;
-      status: string;
-      metadata: Record<string, string>;
-    };
-  };
-}
 
 // ============================================
 // Main Handler
@@ -157,12 +134,11 @@ async function handlePaymentSucceeded(
   const { error } = await supabaseAdmin
     .from("orders")
     .update({
-      payment_status: "paid",
-      order_status: "processing",
+      status: "paid",
       updated_at: new Date().toISOString(),
     })
-    .eq("wire_payment_intent_id", paymentIntent.id)
-    .eq("payment_status", "processing"); // Only update if currently processing
+    .eq("wire_transaction_id", paymentIntent.id)
+    .eq("status", "processing"); // Only update if currently processing
 
   if (error) {
     console.error("[wire-webhook] Failed to update order:", error);
@@ -191,12 +167,11 @@ async function handlePaymentFailed(
   const { error } = await supabaseAdmin
     .from("orders")
     .update({
-      payment_status: "failed",
-      order_status: "cancelled",
+      status: "failed",
       updated_at: new Date().toISOString(),
     })
-    .eq("wire_payment_intent_id", paymentIntent.id)
-    .in("payment_status", ["processing", "pending_payment"]);
+    .eq("wire_transaction_id", paymentIntent.id)
+    .in("status", ["processing", "pending"]);
 
   if (error) {
     console.error("[wire-webhook] Failed to update order:", error);
@@ -225,12 +200,11 @@ async function handlePaymentCancelled(
   const { error } = await supabaseAdmin
     .from("orders")
     .update({
-      payment_status: "cancelled",
-      order_status: "cancelled",
+      status: "cancelled",
       updated_at: new Date().toISOString(),
     })
-    .eq("wire_payment_intent_id", paymentIntent.id)
-    .eq("payment_status", "processing");
+    .eq("wire_transaction_id", paymentIntent.id)
+    .eq("status", "processing");
 
   if (error) {
     console.error("[wire-webhook] Failed to update order:", error);

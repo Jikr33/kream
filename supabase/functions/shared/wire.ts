@@ -8,8 +8,8 @@
 // ============================================
 // Configuration
 // ============================================
-
-export const WIRE_API_BASE = "https://api.wire.mn/v1";
+import { fetch } from "undici";
+export const WIRE_API_BASE = "https://api.wirepayment.mn";
 export const WIRE_CHECKOUT_URL = "https://pay.wire.mn/c";
 
 // ============================================
