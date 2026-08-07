@@ -56,25 +56,3 @@ export type CreateOrderInput = {
   shippingMethod: "standard" | "express";
   shippingAddress: UserAddress;
 };
-
-export type PaymentAttempt = {
-  id: string;
-  order_id: string;
-  wire_transaction_id: string | null;
-  success: boolean;
-  failure_reason: string | null;
-  wire_response: Record<string, any> | null;
-  created_at: string;
-};
-
-export type CreatePaymentResponse = {
-  checkoutUrl: string;
-  paymentIntentId: string;
-  expiresAt: number;
-};
-
-export type PaymentStatusResponse = {
-  status: OrderStatus;
-  paymentIntentId: string;
-  message?: string;
-};

@@ -37,6 +37,11 @@ interface CreatePaymentRequest {
   operatorIds?: string[];
 }
 
+// Support both snake_case (from client) and camelCase
+function getOrderId(body: CreatePaymentRequest): string {
+  return (body as any).orderId || (body as any).order_id || "";
+}
+
 // ============================================
 // Error Handling
 // ============================================
@@ -79,7 +84,9 @@ Deno.serve(async (req: Request) => {
     // Parse request
     const body: CreatePaymentRequest = await req.json();
 
-    if (!body.orderId) {
+    // Support both snake_case and camelCase for orderId
+    const orderId = getOrderId(body);
+    if (!orderId) {
       throw new PaymentError("Order ID is required", "MISSING_ORDER_ID");
     }
 
@@ -100,7 +107,7 @@ Deno.serve(async (req: Request) => {
     const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select("*")
-      .eq("id", body.orderId)
+      .eq("id", orderId)
       .single();
 
     if (orderError || !order) {
@@ -128,17 +135,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Get operatorIds (support both naming conventions)
+    const operatorIds = (body as any).operatorIds || (body as any).operator_ids || ["sandbox"];
+
     // Generate idempotency key
-    const idempotencyKey = `payment_${body.orderId}_${Date.now()}`;
+    const idempotencyKey = `payment_${orderId}_${Date.now()}`;
 
     // Create payment intent with Wire
     const paymentIntent = await createWirePaymentIntent({
       amount: order.total,
       description: `Kream Order: ${order.product_snapshot.name} x${order.quantity}`,
-      allowedOperators: body.operatorIds || ["sandbox"],
+      allowedOperators: operatorIds,
       idempotencyKey,
       metadata: {
-        order_id: body.orderId,
+        order_id: orderId,
         user_id: order.user_id || "guest",
       },
       apiKey: WIRE_API_KEY,
@@ -162,7 +172,7 @@ Deno.serve(async (req: Request) => {
         status: "processing",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", body.orderId);
+      .eq("id", orderId);
 
     if (updateError) {
       console.error(

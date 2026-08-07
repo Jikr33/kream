@@ -30,7 +30,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { WebView, WebViewNavigation } from "react-native-webview";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
-import { Colors, BorderRadius, Spacing } from "@/constants/theme";
+import { BorderRadius, Spacing } from "@/constants/theme";
 
 type PaymentState = "loading" | "ready" | "cancelled" | "failed";
 

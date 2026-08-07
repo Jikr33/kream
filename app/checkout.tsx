@@ -17,9 +17,7 @@
 import {
   getAddress,
   setAddress as setGlobalAddress,
-  clearAddress,
   loadAddressFromStorage,
-  type UserAddress,
 } from "@/store/address";
 import React, {
   useState,
@@ -55,7 +53,6 @@ import { ShippingMethod } from "@/components/PriceSummary";
 import AddressBottomSheet, {
   AddressData,
 } from "@/components/AddressBottomSheet";
-import { Spacing, BorderRadius } from "@/constants/theme";
 import {
   getCart,
   saveCart,
@@ -65,7 +62,7 @@ import {
 } from "@/utils/storage";
 import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
-import { createOrder, OrderError } from "@/services/orders";
+import { OrderError } from "@/services/orders";
 
 // ============================================
 // Payment (Direct Edge Function Call)
@@ -132,9 +129,6 @@ export default function CheckoutScreen() {
   const [showAddressSheet, setShowAddressSheet] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // If params are provided (from product page), use them directly
-  const hasParams = !!(params.id && params.productName && params.price);
 
   // Order state with product options
   const [product, setProduct] = useState({
@@ -370,12 +364,6 @@ export default function CheckoutScreen() {
     setIsLoading(true);
 
     try {
-      // Get user session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id ?? null;
-
       // Create order via Edge Function (server-side validation and price calculation)
       const response = await supabase.functions.invoke("create-order", {
         body: {
