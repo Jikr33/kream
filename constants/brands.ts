@@ -12,18 +12,18 @@ export const BRANDS = {
   Timberland: "https://whatthelogo.com/storage/logos/timberland-99731.png",
   "Dr. Martens":
     "https://brandlogos.net/wp-content/uploads/2023/01/dr-martens-logo-512x512.png",
-  Puma: "https://brandlogos.net/wp-content/uploads/2023/01/puma-logo-512x512.png",
+  Puma: "https://logo-index.com/wp-content/uploads/2026/05/puma.svg",
   Reebok:
-    "https://brandlogos.net/wp-content/uploads/2023/01/reebok-logo-512x512.png",
+    "https://logo-index.com/wp-content/uploads/2026/05/reebok.svg",
   Jordan:
-    "https://brandlogos.net/wp-content/uploads/2023/01/jordan-logo-512x512.png",
+    "https://logo-index.com/wp-content/uploads/2026/05/air-jordan.svg",
   Balenciaga:
-    "https://brandlogos.net/wp-content/uploads/2023/01/balenciaga-logo-512x512.png",
+    "https://logo-index.com/wp-content/uploads/2026/05/balenciaga.svg",
   Gucci:
-    "https://brandlogos.net/wp-content/uploads/2023/01/gucci-logo-512x512.png",
+    "https://logo-index.com/wp-content/uploads/2026/05/gucci.svg",
   "Louis Vuitton":
-    "https://brandlogos.net/wp-content/uploads/2023/01/louis-vuitton-logo-512x512.png",
-  Dior: "https://brandlogos.net/wp-content/uploads/2023/01/dior-logo-512x512.png",
+    "https://logo-index.com/wp-content/uploads/2026/06/louis-vuitton.svg",
+  Dior: "https://logo-index.com/wp-content/uploads/2026/05/dior.svg",
 } as const;
 
 export type BrandName = keyof typeof BRANDS;
