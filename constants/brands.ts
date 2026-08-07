@@ -13,7 +13,6 @@ export const BRANDS = {
   "Dr. Martens":
     "https://brandlogos.net/wp-content/uploads/2023/01/dr-martens-logo-512x512.png",
   Puma: "https://brandlogos.net/wp-content/uploads/2023/01/puma-logo-512x512.png",
-  Hoka: "https://brandlogos.net/wp-content/uploads/2023/01/hoka-logo-512x512.png",
   Reebok:
     "https://brandlogos.net/wp-content/uploads/2023/01/reebok-logo-512x512.png",
   Jordan:
@@ -25,12 +24,6 @@ export const BRANDS = {
   "Louis Vuitton":
     "https://brandlogos.net/wp-content/uploads/2023/01/louis-vuitton-logo-512x512.png",
   Dior: "https://brandlogos.net/wp-content/uploads/2023/01/dior-logo-512x512.png",
-  Prada:
-    "https://brandlogos.net/wp-content/uploads/2023/01/prada-logo-512x512.png",
-  Fendi:
-    "https://brandlogos.net/wp-content/uploads/2023/01/fendi-logo-512x512.png",
-  "Off-White":
-    "https://brandlogos.net/wp-content/uploads/2023/01/off-white-logo-512x512.png",
 } as const;
 
 export type BrandName = keyof typeof BRANDS;
