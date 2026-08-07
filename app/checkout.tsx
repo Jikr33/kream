@@ -18,6 +18,7 @@ import {
   getAddress,
   setAddress as setGlobalAddress,
   loadAddressFromStorage,
+  UserAddress,
 } from "@/store/address";
 import React, {
   useState,
@@ -44,10 +45,6 @@ import * as Haptics from "expo-haptics";
 import CheckoutProductCard from "@/components/CheckoutProductCard";
 import PriceSummary from "@/components/PriceSummary";
 import AddressCard from "@/components/AddressCard";
-import PaymentMethodRow, {
-  PAYMENT_METHODS,
-} from "@/components/PaymentMethodRow";
-import SecurityCard from "@/components/SecurityCard";
 import StickyCheckoutButton from "@/components/StickyCheckoutButton";
 import { ShippingMethod } from "@/components/PriceSummary";
 import AddressBottomSheet, {
@@ -63,46 +60,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getBrandName } from "@/constants/brands";
 import { OrderError } from "@/services/orders";
-
-// ============================================
-// Payment (Direct Edge Function Call)
-// ============================================
-
-interface CreatePaymentResponse {
-  checkoutUrl: string;
-  paymentIntentId: string;
-  expiresAt: number;
-}
-
-async function createPayment(
-  orderId: string,
-  operatorIds: string[] = ["sandbox"],
-): Promise<CreatePaymentResponse> {
-  const { data, error } = await supabase.functions.invoke(
-    "create-wire-payment",
-    {
-      body: {
-        order_id: orderId,
-        operator_ids: operatorIds,
-      },
-    },
-  );
-
-  if (error) {
-    console.error("[Checkout] createPayment error:", error);
-    throw new Error(error.message || "Failed to create payment");
-  }
-
-  if (!data?.checkoutUrl || !data?.paymentIntentId) {
-    throw new Error("Invalid response from payment service");
-  }
-
-  return {
-    checkoutUrl: data.checkoutUrl,
-    paymentIntentId: data.paymentIntentId,
-    expiresAt: data.expiresAt,
-  };
-}
 
 type ProductVariant = {
   size: string;
@@ -124,7 +81,6 @@ export default function CheckoutScreen() {
     price?: string;
   }>();
 
-  const [selectedPayment, setSelectedPayment] = useState<string>("credit-card");
   const [isLoading, setIsLoading] = useState(false);
   const [showAddressSheet, setShowAddressSheet] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -395,13 +351,8 @@ export default function CheckoutScreen() {
       await clearCart();
       await clearGuestAddress();
 
-      // Create payment session via Edge Function
-      const payment = await createPayment(order.id);
-
-      // Navigate to payment screen with order ID and payment URL
-      router.push(
-        `/payment?orderId=${order.id}&paymentUrl=${encodeURIComponent(payment.checkoutUrl)}`,
-      );
+      // Navigate to orders list
+      router.replace("/orders");
     } catch (error) {
       console.error("[Checkout] Order creation failed:", error);
 
@@ -484,24 +435,6 @@ export default function CheckoutScreen() {
               phoneNumber={address?.phoneNumber}
               onEdit={handleEditAddress}
             />
-          </View>
-
-          {/* Payment Methods */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            {PAYMENT_METHODS.map((method) => (
-              <PaymentMethodRow
-                key={method.id}
-                method={method}
-                isSelected={selectedPayment === method.id}
-                onSelect={() => setSelectedPayment(method.id)}
-              />
-            ))}
-          </View>
-
-          {/* Security */}
-          <View style={styles.section}>
-            <SecurityCard />
           </View>
 
           {/* Bottom spacing for sticky button */}

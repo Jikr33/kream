@@ -22,7 +22,7 @@ import { Colors } from "@/constants/theme";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,

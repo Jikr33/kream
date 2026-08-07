@@ -35,24 +35,19 @@ const isSupabaseConfigured =
  */
 export async function fetchProducts(): Promise<ProductWithDetails[]> {
   if (!isSupabaseConfigured) {
+    console.log("[Products Service] Supabase not configured. Using mock data.");
     return fallbackProducts();
   }
 
   try {
     const { data, error } = await supabase
-      .from("products")
+      .from("app_2515d5c380_products")
       .select("*")
-      .eq("is_available", true)
       .order("created_at", { ascending: false });
 
     if (error || !data) return fallbackProducts();
 
-    return (data as Product[]).map((p) => ({
-      ...p,
-      brandName: getBrandName(p.brand_id),
-      avgRating: getAverageRating(p.id),
-      reviewCount: getReviewCount(p.id),
-    }));
+    return data as ProductWithDetails[];
   } catch {
     return fallbackProducts();
   }
@@ -67,34 +62,17 @@ export async function fetchProducts(): Promise<ProductWithDetails[]> {
 export async function fetchProductById(
   id: string,
 ): Promise<ProductWithDetails | null> {
-  if (!isSupabaseConfigured) {
-    const product = mockProducts.find((p) => p.id === id);
-    if (!product) return null;
-
-    return {
-      ...product,
-      brandName: getBrandName(product.brand_id),
-      avgRating: getAverageRating(product.id),
-      reviewCount: getReviewCount(product.id),
-    };
-  }
-
   try {
     const { data, error } = await supabase
-      .from("products")
+      .from("app_2515d5c380_products")
       .select("*")
       .eq("id", id)
       .single();
 
     if (error || !data) return null;
 
-    const product = data as Product;
-    return {
-      ...product,
-      brandName: getBrandName(product.brand_id),
-      avgRating: getAverageRating(product.id),
-      reviewCount: getReviewCount(product.id),
-    };
+    const product = data as ProductWithDetails;
+    return product;
   } catch {
     return null;
   }

@@ -51,15 +51,8 @@ export type Review = {
 };
 
 // ============================================
-// Payment Types
+// Order Status
 // ============================================
-
-export type PaymentStatus =
-  | "pending"
-  | "paid"
-  | "failed"
-  | "cancelled"
-  | "expired";
 
 export type OrderStatus =
   | "pending"
@@ -69,16 +62,6 @@ export type OrderStatus =
   | "completed"
   | "cancelled"
   | "failed";
-
-export type PaymentProvider = "wire" | "stripe" | "paypal";
-
-export type PaymentMethod = {
-  id: string;
-  name: string;
-  type: "card" | "qpay" | "socialpay" | "bank_transfer";
-  icon?: string;
-  enabled: boolean;
-};
 
 // ============================================
 // Order Types
@@ -116,8 +99,6 @@ export type Order = {
   subtotal: number;
   shipping_fee: number;
   total: number;
-  // Payment info
-  wire_transaction_id: string | null;
   // Status
   status: OrderStatus;
   // Address
@@ -143,8 +124,6 @@ export type OrderWithItems = Order & {
 export type PaymentResult = {
   success: boolean;
   orderId: string;
-  paymentId?: string;
-  checkoutUrl?: string;
   error?: string;
 };
 
@@ -211,21 +190,6 @@ export type Database = {
       orders: TableRow<Order>;
       order_items: TableRow<OrderItem>;
       profiles: TableRow<UserProfile>;
-      payments: TableRow<Payment>;
     };
   };
-};
-
-export type Payment = {
-  id: string;
-  order_id: string;
-  user_id: string | null;
-  wire_transaction_id: string | null;
-  amount: number;
-  currency: string;
-  status: PaymentStatus;
-  payment_method: string | null;
-  expires_at: string | null;
-  created_at: string;
-  updated_at: string;
 };

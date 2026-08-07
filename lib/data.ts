@@ -4,7 +4,6 @@
  * This file is deprecated. Use the new service layer instead:
  *   - services/products.ts
  *   - services/orders.ts
- *   - services/payment.ts
  *
  * This file re-exports from the new services for backward compatibility.
  */

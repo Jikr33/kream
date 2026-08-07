@@ -39,7 +39,6 @@ export type Order = {
   subtotal: number;
   shipping_fee: number;
   total: number;
-  wire_transaction_id: string | null;
   status: OrderStatus;
   shipping_address: UserAddress;
   completed_at: string | null;
